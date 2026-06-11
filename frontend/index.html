@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Salon Élégance — Réservez votre rendez-vous</title>
+  <meta name="description" content="Réservez votre rendez-vous au salon de coiffure Élégance en ligne, 24h/24. Coupe, couleur, balayage — prenez soin de vous." />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/home.css" />
+</head>
+<body>
+
+  <!-- ══ NAVBAR ═══════════════════════════════════════════ -->
+  <header class="navbar" role="banner">
+    <div class="container navbar__inner">
+      <a href="index.html" class="navbar__logo" aria-label="Accueil Salon Élégance">
+        Élégance<span>.</span>
+      </a>
+
+      <nav class="navbar__links" aria-label="Navigation principale">
+        <a href="#services">Prestations</a>
+        <a href="#howitworks">Comment ça marche</a>
+        <a href="pages/login.html">Mon espace</a>
+      </nav>
+
+      <div class="navbar__actions">
+        <!-- Injecté dynamiquement par app.js selon l'état de connexion -->
+        <a href="pages/login.html" class="btn btn-outline">Connexion</a>
+        <a href="pages/login.html#register" class="btn btn-accent">Prendre RDV</a>
+      </div>
+
+      <button class="navbar__burger" aria-label="Ouvrir le menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══ HERO ══════════════════════════════════════════ -->
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero__inner">
+
+        <div class="hero__content">
+          <p class="hero__eyebrow">Salon de coiffure Paris</p>
+          <h1 class="hero__title" id="hero-title">
+            Prenez soin<br />
+            de <em>vous</em>,<br />
+            à votre rythme.
+          </h1>
+          <p class="hero__desc">
+            Réservez votre rendez-vous en ligne en 2 minutes — sans téléphone, sans attente.
+            Disponible 24h/24, 7j/7.
+          </p>
+          <div class="hero__actions">
+            <a href="pages/login.html#register" class="btn btn-accent btn-lg">
+              Réserver maintenant
+            </a>
+            <a href="#services" class="btn btn-outline btn-lg">
+              Voir les prestations
+            </a>
+          </div>
+        </div>
+
+        <div class="hero__visual" aria-hidden="true">
+          <div class="hero__img-wrap">
+            <div class="hero__img-placeholder">
+              <svg width="72" height="72" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1" stroke-linecap="round">
+                <path d="M6 3a3 3 0 0 1 3 3c0 1.5-1 2.5-2 3.5L5 12l1 7H6a1 1 0 0 1-1-1v-5L3.5 12C2.5 10.5 3 8 4.5 7"/>
+                <path d="M18 3a3 3 0 0 0-3 3c0 1.5 1 2.5 2 3.5L19 12l-1 7h1a1 1 0 0 0 1-1v-5l1.5-1.5C22.5 10.5 22 8 20.5 7"/>
+                <path d="M12 3c0 3-2 4-2 7s2 4 2 7"/>
+              </svg>
+              <p>Photo du salon</p>
+            </div>
+          </div>
+
+          <div class="hero__badge">
+            <div class="hero__badge-icon" aria-hidden="true">⭐</div>
+            <div class="hero__badge-text">
+              <p>Note client</p>
+              <strong>4,9 / 5 — 120+ avis</strong>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══ STATS ══════════════════════════════════════════ -->
+    <section class="stats" aria-label="Chiffres clés">
+      <div class="container stats__grid">
+        <div class="stats__item">
+          <p class="stats__number">
+            <span data-count="500" data-suffix="+">500+</span>
+          </p>
+          <p class="stats__label">Clients satisfaits</p>
+        </div>
+        <div class="stats__item">
+          <p class="stats__number">
+            <span data-count="6" data-suffix="">6</span>
+          </p>
+          <p class="stats__label">Prestations disponibles</p>
+        </div>
+        <div class="stats__item">
+          <p class="stats__number">
+            <span data-count="5" data-suffix=" ans">5 ans</span>
+          </p>
+          <p class="stats__label">D'expérience</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ SERVICES ══════════════════════════════════════ -->
+    <section class="services-section" id="services" aria-labelledby="services-title">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Nos prestations</p>
+          <h2 id="services-title">Ce que nous proposons</h2>
+          <p>Des soins adaptés à tous les types de cheveux, réalisés par des professionnels passionnés.</p>
+        </div>
+
+        <div class="services-grid" id="servicesGrid" role="list" aria-live="polite" aria-busy="true">
+          <!-- Chargé dynamiquement via l'API -->
+          <p class="service-card__loader" aria-label="Chargement des prestations…">
+            Chargement des prestations…
+          </p>
+        </div>
+
+        <div class="services-cta">
+          <a href="pages/login.html#register" class="btn btn-accent btn-lg">
+            Réserver une prestation
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ COMMENT ÇA MARCHE ═══════════════════════════ -->
+    <section class="howitworks" id="howitworks" aria-labelledby="hiw-title">
+      <div class="container">
+        <div class="section-header">
+          <p class="eyebrow">Simple & rapide</p>
+          <h2 id="hiw-title">Réservez en 3 étapes</h2>
+          <p>Pas besoin d'appeler — tout se fait depuis votre téléphone ou votre ordinateur.</p>
+        </div>
+
+        <ol class="steps" aria-label="Étapes de réservation">
+          <li class="step">
+            <div class="step__number" aria-hidden="true">1</div>
+            <h3 class="step__title">Choisissez votre prestation</h3>
+            <p class="step__desc">
+              Parcourez le catalogue — coupe, couleur, balayage, brushing…
+              Chaque prestation affiche durée et tarif.
+            </p>
+          </li>
+          <li class="step">
+            <div class="step__number" aria-hidden="true">2</div>
+            <h3 class="step__title">Sélectionnez un créneau</h3>
+            <p class="step__desc">
+              Le calendrier affiche uniquement les créneaux disponibles en temps réel.
+              Choisissez la date et l'heure qui vous conviennent.
+            </p>
+          </li>
+          <li class="step">
+            <div class="step__number" aria-hidden="true">3</div>
+            <h3 class="step__title">Confirmez votre RDV</h3>
+            <p class="step__desc">
+              Votre rendez-vous est enregistré instantanément.
+              Consultez et annulez depuis votre espace client à tout moment.
+            </p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ══ CTA ════════════════════════════════════════════ -->
+    <section class="cta-section" aria-labelledby="cta-title">
+      <div class="container cta-section__inner">
+        <h2 id="cta-title">Prêt(e) à prendre soin de vous ?</h2>
+        <p>Créez votre compte gratuitement et réservez votre premier rendez-vous en quelques secondes.</p>
+        <a href="pages/login.html#register" class="btn btn-primary btn-lg">
+          Créer un compte — c'est gratuit
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ══ FOOTER ════════════════════════════════════════════ -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <div class="footer__grid">
+        <div>
+          <p class="footer__brand">Élégance<span>.</span></p>
+          <p class="footer__tagline">
+            Votre salon de coiffure à Paris.<br />
+            Réservations en ligne, 24h/24.
+          </p>
+        </div>
+
+        <nav aria-label="Liens utiles">
+          <h4>Navigation</h4>
+          <ul class="footer__links">
+            <li><a href="#services">Nos prestations</a></li>
+            <li><a href="#howitworks">Comment ça marche</a></li>
+            <li><a href="pages/login.html">Mon espace client</a></li>
+          </ul>
+        </nav>
+
+        <div>
+          <h4>Informations</h4>
+          <ul class="footer__links">
+            <li><a href="#">Mentions légales</a></li>
+            <li><a href="#">Politique de confidentialité</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer__bottom">
+        <p>© 2026 Salon Élégance — Tous droits réservés</p>
+        <p>Projet DWWM — Application de réservation</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/app.js"></script>
+  <script src="js/home.js"></script>
+</body>
+</html>

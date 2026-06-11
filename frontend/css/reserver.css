@@ -1,0 +1,137 @@
+/* ============================================================
+   reserver.css — Styles spécifiques à la page reserver
+   ============================================================ */
+
+    /* ── Stepper ─── */
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 2.5rem;
+    }
+    .stepper__step {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      flex: 1;
+    }
+    .stepper__step:not(:last-child)::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin: 0 .75rem;
+    }
+    .stepper__num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .82rem;
+      font-weight: 600;
+      flex-shrink: 0;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      border: 1.5px solid var(--border);
+      transition: background var(--transition), color var(--transition);
+    }
+    .stepper__step.active  .stepper__num { background: var(--accent);   color: #fff; border-color: var(--accent); }
+    .stepper__step.done    .stepper__num { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+    .stepper__label { font-size: .82rem; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+    .stepper__step.active .stepper__label { color: var(--primary); }
+
+    /* ── Panels ─── */
+    .booking-panel { display: none; }
+    .booking-panel.active { display: block; }
+
+    /* ── Grille services ─── */
+    .service-pick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .service-pick-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem 1.25rem;
+      cursor: pointer;
+      transition: border-color var(--transition), transform var(--transition), box-shadow var(--transition);
+    }
+    .service-pick-card:hover { border-color: var(--accent-light); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+    .service-pick-card.selected { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(180,123,78,.12); }
+    .service-pick-card__icon { font-size: 1.5rem; margin-bottom: 1rem; }
+    .service-pick-card__name { font-weight: 600; font-size: .95rem; margin-bottom: .3rem; }
+    .service-pick-card__meta { font-size: .8rem; color: var(--text-muted); }
+    .service-pick-card__price { font-family: var(--font-main); font-size: 1.3rem; color: var(--accent); font-weight: 700; margin-top: .75rem; }
+
+    /* ── Calendrier ─── */
+    .cal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .cal-header h3 { font-size: 1rem; font-weight: 600; }
+    .cal-nav {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 32px; height: 32px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition);
+    }
+    .cal-nav:hover { background: var(--surface-2); }
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    .cal-day-name { font-size: .72rem; font-weight: 600; color: var(--text-muted); padding: .4rem 0; text-transform: uppercase; letter-spacing: .05em; }
+    .cal-day {
+      aspect-ratio: 1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background var(--transition), color var(--transition);
+      border: 1.5px solid transparent;
+    }
+    .cal-day:hover:not(.disabled):not(.empty)       { background: var(--accent-bg); }
+    .cal-day.selected  { background: var(--accent); color: #fff; font-weight: 600; }
+    .cal-day.today     { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .cal-day.disabled  { color: var(--text-light); cursor: default; }
+    .cal-day.empty     { cursor: default; }
+
+    /* ── Créneaux ─── */
+    .slots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: .6rem;
+      margin-top: 1rem;
+    }
+    .slot-btn {
+      padding: .55rem .5rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
+      font-size: .85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      text-align: center;
+    }
+    .slot-btn:hover   { border-color: var(--accent); background: var(--accent-bg); }
+    .slot-btn.selected { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+    /* ── Récap ─── */
+    .recap-row { display: flex; justify-content: space-between; padding: .6rem 0; border-bottom: 1px solid var(--border); font-size: .9rem; }
+    .recap-row:last-child { border: none; font-weight: 600; font-size: 1rem; }
+    .recap-row span:first-child { color: var(--text-muted); }
+
+    @media (max-width: 600px) {
+      .stepper__label { display: none; }
+      .stepper__step:not(:last-child)::after { margin: 0 .4rem; }
+    }

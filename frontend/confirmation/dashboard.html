@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin — Salon Élégance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <style>
+    /* ── Layout dashboard ─── */
+    .dash-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      min-height: calc(100vh - 64px);
+    }
+    .dash-sidebar {
+      background: var(--primary);
+      padding: 1.75rem 0;
+      position: sticky;
+      top: 64px;
+      height: calc(100vh - 64px);
+    }
+    .dash-sidebar__logo {
+      font-family: var(--font-main);
+      font-size: 1.1rem;
+      color: #fff;
+      padding: 0 1.5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+      margin-bottom: 1rem;
+    }
+    .dash-sidebar__logo span { color: var(--accent-light); }
+    .dash-nav a {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      padding: .75rem 1.5rem;
+      color: rgba(255,255,255,.6);
+      font-size: .88rem;
+      font-weight: 500;
+      transition: color var(--transition), background var(--transition);
+    }
+    .dash-nav a:hover, .dash-nav a.active {
+      color: #fff;
+      background: rgba(255,255,255,.07);
+    }
+    .dash-nav a.active { border-right: 3px solid var(--accent-light); }
+    .dash-nav__icon { font-size: 1.1rem; }
+
+    .dash-main { background: var(--surface-2); padding: 2rem 2.5rem; overflow-y: auto; }
+
+    /* ── Metric cards ─── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+    }
+    .metric-card__label { font-size: .75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: .5rem; }
+    .metric-card__value { font-family: var(--font-main); font-size: 2.2rem; font-weight: 700; color: var(--primary); line-height: 1; }
+    .metric-card__sub   { font-size: .78rem; color: var(--text-muted); margin-top: .4rem; }
+
+    /* ── Tabs ─── */
+    .dash-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+    .dash-tab {
+      padding: .65rem 1.25rem;
+      border: none;
+      background: none;
+      font-size: .88rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color var(--transition), border-color var(--transition);
+    }
+    .dash-tab:hover { color: var(--primary); }
+    .dash-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .dash-panel { display: none; }
+    .dash-panel.active { display: block; }
+
+    /* ── Agenda ─── */
+    .agenda-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .agenda-date-nav { display: flex; align-items: center; gap: .5rem; }
+    .agenda-date-nav button {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: 32px; height: 32px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background var(--transition);
+    }
+    .agenda-date-nav button:hover { background: var(--surface-2); }
+    .agenda-date-nav strong { font-size: .95rem; min-width: 180px; text-align: center; }
+
+    .agenda-list { display: flex; flex-direction: column; gap: .6rem; }
+    .agenda-item {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      gap: 1rem;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: .9rem 1.25rem;
+    }
+    .agenda-item__time { font-weight: 600; font-size: .9rem; color: var(--accent); }
+    .agenda-item__client { font-weight: 600; font-size: .9rem; }
+    .agenda-item__service { font-size: .8rem; color: var(--text-muted); }
+
+    /* ── Services admin ─── */
+    .service-table { width: 100%; border-collapse: collapse; }
+    .service-table th, .service-table td {
+      padding: .8rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: .88rem;
+    }
+    .service-table th { font-weight: 600; color: var(--text-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; background: var(--surface-2); }
+    .service-table td:last-child { text-align: right; }
+    .service-table tr:last-child td { border: none; }
+    .service-table tr:hover td { background: var(--accent-bg); }
+
+    .btn-icon {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: .3rem .6rem;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .btn-icon:hover { background: var(--surface-2); }
+    .btn-icon--danger:hover { background: var(--error-bg); border-color: var(--error); color: var(--error); }
+
+    /* ── Modal service ─── */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.hidden { display: none; }
+    .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 2rem; max-width: 420px; width: 100%; box-shadow: var(--shadow-lg); }
+    .modal h3 { margin-bottom: 1.5rem; }
+    .modal__actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    @media (max-width: 768px) {
+      .dash-layout { grid-template-columns: 1fr; }
+      .dash-sidebar { display: none; }
+      .dash-main { padding: 1.25rem; }
+      .agenda-item { grid-template-columns: 1fr; gap: .3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="navbar" role="banner">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Élégance<span style="color:var(--accent)">.</span></a>
+      <div class="navbar__actions"></div>
+    </div>
+  </header>
+
+  <div class="dash-layout">
+
+    <!-- Sidebar -->
+    <aside class="dash-sidebar" aria-label="Navigation admin">
+      <div class="dash-sidebar__logo">Élégance<span>.</span> <small style="display:block;font-family:var(--font-ui);font-size:.7rem;color:rgba(255,255,255,.4);margin-top:.2rem;">Administration</small></div>
+      <nav class="dash-nav">
+        <a href="#" class="active" data-tab="agenda"><span class="dash-nav__icon">📅</span> Agenda</a>
+        <a href="#" data-tab="services"><span class="dash-nav__icon">✂️</span> Prestations</a>
+        <a href="#" data-tab="clients"><span class="dash-nav__icon">👥</span> Rendez-vous</a>
+      </nav>
+    </aside>
+
+    <!-- Contenu principal -->
+    <main class="dash-main" id="dashMain">
+
+      <!-- Métriques -->
+      <div class="metrics-grid" id="metricsGrid">
+        <div class="metric-card"><p class="metric-card__label">RDV aujourd'hui</p><p class="metric-card__value" id="metToday">—</p></div>
+        <div class="metric-card"><p class="metric-card__label">RDV cette semaine</p><p class="metric-card__value" id="metWeek">—</p></div>
+        <div class="metric-card"><p class="metric-card__label">Prestations actives</p><p class="metric-card__value" id="metServices">—</p></div>
+        <div class="metric-card"><p class="metric-card__label">Annulations</p><p class="metric-card__value" id="metCancelled">—</p></div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="dash-tabs" role="tablist">
+        <button class="dash-tab active" data-tab="agenda" role="tab" aria-selected="true">📅 Agenda du jour</button>
+        <button class="dash-tab" data-tab="services" role="tab" aria-selected="false">✂️ Prestations</button>
+        <button class="dash-tab" data-tab="clients" role="tab" aria-selected="false">👥 Tous les RDV</button>
+      </div>
+
+      <!-- Panel Agenda -->
+      <div class="dash-panel active" id="panel-agenda" role="tabpanel">
+        <div class="agenda-toolbar">
+          <div class="agenda-date-nav">
+            <button id="agendaPrev" aria-label="Jour précédent">‹</button>
+            <strong id="agendaDateLabel"></strong>
+            <button id="agendaNext" aria-label="Jour suivant">›</button>
+          </div>
+          <button class="btn btn-outline" id="agendaToday" style="padding:.4rem 1rem;font-size:.82rem;">Aujourd'hui</button>
+        </div>
+        <div id="agendaList" class="agenda-list" role="list" aria-live="polite">
+          <div class="loader"><div class="spinner"></div> Chargement…</div>
+        </div>
+      </div>
+
+      <!-- Panel Prestations -->
+      <div class="dash-panel" id="panel-services" role="tabpanel">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+          <button class="btn btn-accent" id="btnAddService">+ Ajouter une prestation</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+          <table class="service-table" id="serviceTable">
+            <thead><tr><th>Prestation</th><th>Durée</th><th>Prix</th><th>Statut</th><th></th></tr></thead>
+            <tbody id="serviceTableBody">
+              <tr><td colspan="5"><div class="loader"><div class="spinner"></div> Chargement…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Panel Tous les RDV -->
+      <div class="dash-panel" id="panel-clients" role="tabpanel">
+        <div class="agenda-toolbar">
+          <label for="clientsDateFilter" style="font-size:.85rem;font-weight:500;">Filtrer par date :</label>
+          <input type="date" id="clientsDateFilter" style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
+          <button class="btn btn-outline" id="btnClearFilter" style="padding:.4rem .9rem;font-size:.82rem;">Tout afficher</button>
+        </div>
+        <div id="clientsList" class="agenda-list" role="list" aria-live="polite">
+          <div class="loader"><div class="spinner"></div> Chargement…</div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal service -->
+  <div class="modal-overlay hidden" id="serviceModal" role="dialog" aria-modal="true" aria-labelledby="serviceModalTitle">
+    <div class="modal">
+      <h3 id="serviceModalTitle">Ajouter une prestation</h3>
+      <div id="serviceModalAlert" style="display:none;" class="form-alert"></div>
+      <form id="serviceForm" novalidate>
+        <input type="hidden" id="serviceId" />
+        <div class="form-group">
+          <label for="serviceName">Nom</label>
+          <input type="text" id="serviceName" placeholder="Ex : Coupe femme" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="serviceDuration">Durée (min)</label>
+            <input type="number" id="serviceDuration" min="15" step="15" placeholder="60" required />
+          </div>
+          <div class="form-group">
+            <label for="servicePrice">Prix (€)</label>
+            <input type="number" id="servicePrice" min="0" step="0.01" placeholder="45.00" required />
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn-outline" id="serviceModalClose">Annuler</button>
+          <button type="submit" class="btn btn-accent" id="serviceSubmit">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/app.js"></script>
+  <script>
+  const MONTHS_LONG = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  let agendaDate = new Date();
+  agendaDate.setHours(0,0,0,0);
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!Auth.isLogged() || !Auth.isAdmin()) { window.location.href = 'login.html'; return; }
+    await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
+  });
+
+  // ── Tabs ──────────────────────────────────────────────
+  function switchTab(tabId) {
+    document.querySelectorAll('.dash-tab, .dash-panel').forEach(el => {
+      el.classList.remove('active');
+      if (el.tagName === 'BUTTON') el.setAttribute('aria-selected','false');
+    });
+    document.querySelector(`.dash-tab[data-tab="${tabId}"]`).classList.add('active');
+    document.querySelector(`.dash-tab[data-tab="${tabId}"]`).setAttribute('aria-selected','true');
+    document.getElementById(`panel-${tabId}`).classList.add('active');
+  }
+  document.querySelectorAll('.dash-tab').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+  document.querySelectorAll('.dash-nav a').forEach(a => a.addEventListener('click', e => { e.preventDefault(); switchTab(a.dataset.tab); }));
+
+  // ── Métriques ──────────────────────────────────────────
+  async function loadMetrics() {
+    try {
+      const todayStr = new Date().toISOString().slice(0,10);
+      const [allRdv, services] = await Promise.all([
+        apiRequest('/appointments'),
+        apiRequest('/services'),
+      ]);
+      const todayRdv    = allRdv.filter(r => r.start_at.startsWith(todayStr));
+      const weekStart   = new Date(); weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
+      const weekEnd     = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 6);
+      const weekRdv     = allRdv.filter(r => { const d = new Date(r.start_at); return d >= weekStart && d <= weekEnd; });
+      const cancelCount = allRdv.filter(r => r.status === 'cancelled').length;
+      document.getElementById('metToday').textContent     = todayRdv.length;
+      document.getElementById('metWeek').textContent      = weekRdv.length;
+      document.getElementById('metServices').textContent  = services.length;
+      document.getElementById('metCancelled').textContent = cancelCount;
+    } catch(err) { console.error(err); }
+  }
+
+  // ── Agenda ─────────────────────────────────────────────
+  function formatAgendaDate(d) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const tom   = new Date(today); tom.setDate(tom.getDate()+1);
+    if (d.toDateString() === today.toDateString()) return 'Aujourd\'hui — ' + d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+    if (d.toDateString() === tom.toDateString())   return 'Demain — '       + d.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+    return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  }
+
+  async function loadAgenda() {
+    document.getElementById('agendaDateLabel').textContent = formatAgendaDate(agendaDate);
+    const list = document.getElementById('agendaList');
+    list.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
+    try {
+      const dateStr = agendaDate.toISOString().slice(0,10);
+      const rdvs = await apiRequest(`/appointments?date=${dateStr}`);
+      if (!rdvs.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📅</div><h3>Aucun rendez-vous</h3><p>Aucun RDV prévu ce jour.</p></div>`;
+        return;
+      }
+      list.innerHTML = rdvs.map(r => {
+        const time = new Date(r.start_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        const end  = new Date(r.end_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        return `
+          <div class="agenda-item" role="listitem">
+            <span class="agenda-item__time">${time} – ${end}</span>
+            <div>
+              <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
+              <p class="agenda-item__service">${r.service_name} · ${r.duration_minutes} min</p>
+            </div>
+            <span class="badge badge--${r.status}">${r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente'}</span>
+          </div>`;
+      }).join('');
+    } catch(err) {
+      list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+    }
+  }
+  document.getElementById('agendaPrev').addEventListener('click', () => { agendaDate.setDate(agendaDate.getDate()-1); loadAgenda(); });
+  document.getElementById('agendaNext').addEventListener('click', () => { agendaDate.setDate(agendaDate.getDate()+1); loadAgenda(); });
+  document.getElementById('agendaToday').addEventListener('click', () => { agendaDate = new Date(); agendaDate.setHours(0,0,0,0); loadAgenda(); });
+
+  // ── Tous les RDV ───────────────────────────────────────
+  async function loadAllRdv(dateFilter = '') {
+    const list = document.getElementById('clientsList');
+    list.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
+    try {
+      const url = dateFilter ? `/appointments?date=${dateFilter}` : '/appointments';
+      const rdvs = await apiRequest(url);
+      if (!rdvs.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-state__icon">📋</div><h3>Aucun résultat</h3><p>Aucun rendez-vous pour cette période.</p></div>`;
+        return;
+      }
+      list.innerHTML = rdvs.map(r => {
+        const date = new Date(r.start_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+        const time = new Date(r.start_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+        return `
+          <div class="agenda-item" role="listitem">
+            <span class="agenda-item__time">${date} ${time}</span>
+            <div>
+              <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
+              <p class="agenda-item__service">${r.service_name}</p>
+            </div>
+            <span class="badge badge--${r.status}">${r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente'}</span>
+          </div>`;
+      }).join('');
+    } catch(err) {
+      list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+    }
+  }
+  document.getElementById('clientsDateFilter').addEventListener('change', e => loadAllRdv(e.target.value));
+  document.getElementById('btnClearFilter').addEventListener('click', () => {
+    document.getElementById('clientsDateFilter').value = '';
+    loadAllRdv();
+  });
+  document.querySelector('.dash-tab[data-tab="clients"]').addEventListener('click', () => loadAllRdv());
+
+  // ── Prestations ────────────────────────────────────────
+  async function loadServices() {
+    const tbody = document.getElementById('serviceTableBody');
+    try {
+      const services = await apiRequest('/services');
+      document.getElementById('metServices').textContent = services.length;
+      if (!services.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem;">Aucune prestation.</td></tr>'; return; }
+      tbody.innerHTML = services.map(s => `
+        <tr>
+          <td><strong>${s.name}</strong></td>
+          <td>${s.duration_minutes} min</td>
+          <td>${parseFloat(s.price).toFixed(2)} €</td>
+          <td><span class="badge badge--confirmed">Active</span></td>
+          <td>
+            <button class="btn-icon" data-edit="${s.id}" data-name="${s.name}" data-duration="${s.duration_minutes}" data-price="${s.price}">✏️ Modifier</button>
+            <button class="btn-icon btn-icon--danger" data-delete="${s.id}" style="margin-left:.5rem;">🗑 Désactiver</button>
+          </td>
+        </tr>`).join('');
+
+      tbody.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openServiceModal({
+          id: btn.dataset.edit, name: btn.dataset.name,
+          duration: btn.dataset.duration, price: btn.dataset.price
+        }));
+      });
+      tbody.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Désactiver cette prestation ?')) return;
+          await apiRequest(`/services/${btn.dataset.delete}`, { method: 'DELETE' });
+          showToast('Prestation désactivée.');
+          loadServices();
+        });
+      });
+    } catch(err) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--error);">${err.message}</td></tr>`;
+    }
+  }
+
+  function openServiceModal(s = null) {
+    document.getElementById('serviceModalTitle').textContent = s ? 'Modifier la prestation' : 'Ajouter une prestation';
+    document.getElementById('serviceId').value       = s?.id || '';
+    document.getElementById('serviceName').value     = s?.name || '';
+    document.getElementById('serviceDuration').value = s?.duration || '';
+    document.getElementById('servicePrice').value    = s?.price || '';
+    document.getElementById('serviceModalAlert').style.display = 'none';
+    document.getElementById('serviceModal').classList.remove('hidden');
+  }
+  document.getElementById('btnAddService').addEventListener('click', () => openServiceModal());
+  document.getElementById('serviceModalClose').addEventListener('click', () => document.getElementById('serviceModal').classList.add('hidden'));
+
+  document.getElementById('serviceForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id       = document.getElementById('serviceId').value;
+    const name     = document.getElementById('serviceName').value.trim();
+    const duration = document.getElementById('serviceDuration').value;
+    const price    = document.getElementById('servicePrice').value;
+    if (!name || !duration || !price) return;
+
+    const btn = document.getElementById('serviceSubmit');
+    btn.disabled = true; btn.textContent = 'Enregistrement…';
+
+    try {
+      if (id) {
+        await apiRequest(`/services/${id}`, { method: 'PUT', body: JSON.stringify({ name, duration_minutes: duration, price }) });
+        showToast('Prestation mise à jour.');
+      } else {
+        await apiRequest('/services', { method: 'POST', body: JSON.stringify({ name, duration_minutes: duration, price }) });
+        showToast('Prestation ajoutée.');
+      }
+      document.getElementById('serviceModal').classList.add('hidden');
+      loadServices();
+    } catch(err) {
+      const alert = document.getElementById('serviceModalAlert');
+      alert.style.display = 'block'; alert.className = 'form-alert visible form-alert--error';
+      alert.textContent = err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enregistrer';
+    }
+  });
+  </script>
+</body>
+</html>

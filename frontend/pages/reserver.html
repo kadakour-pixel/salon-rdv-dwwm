@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Réserver — Salon Élégance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/reserver.css" />
+</head>
+<body>
+
+  <header class="navbar" role="banner">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Élégance<span style="color:var(--accent)">.</span></a>
+      <nav class="navbar__links"><a href="../index.html">Accueil</a><a href="mes-rdv.html">Mes RDV</a></nav>
+      <div class="navbar__actions"></div>
+      <button class="navbar__burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header">
+        <p class="eyebrow">Réservation</p>
+        <h1>Prenez votre rendez-vous</h1>
+      </div>
+
+      <!-- Stepper -->
+      <nav class="stepper" aria-label="Étapes de réservation">
+        <div class="stepper__step active" id="step-ind-1">
+          <span class="stepper__num">1</span>
+          <span class="stepper__label">Prestation</span>
+        </div>
+        <div class="stepper__step" id="step-ind-2">
+          <span class="stepper__num">2</span>
+          <span class="stepper__label">Créneau</span>
+        </div>
+        <div class="stepper__step" id="step-ind-3">
+          <span class="stepper__num">3</span>
+          <span class="stepper__label">Confirmation</span>
+        </div>
+      </nav>
+
+      <!-- ── Étape 1 : Choisir une prestation ── -->
+      <div class="booking-panel active" id="panel-1">
+        <div class="card">
+          <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Quelle prestation souhaitez-vous ?</h2>
+          <div class="service-pick-grid" id="servicePickGrid">
+            <div class="loader"><div class="spinner"></div> Chargement…</div>
+          </div>
+          <div style="margin-top:1.75rem;text-align:right;">
+            <button class="btn btn-accent" id="btnStep1Next" disabled>Continuer →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Étape 2 : Choisir une date et un créneau ── -->
+      <div class="booking-panel" id="panel-2">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;" class="step2-grid">
+          <!-- Calendrier -->
+          <div class="card">
+            <div class="cal-header">
+              <button class="cal-nav" id="calPrev" aria-label="Mois précédent">‹</button>
+              <h3 id="calTitle"></h3>
+              <button class="cal-nav" id="calNext" aria-label="Mois suivant">›</button>
+            </div>
+            <div class="cal-grid" id="calGrid" role="grid" aria-label="Calendrier"></div>
+          </div>
+          <!-- Créneaux -->
+          <div class="card">
+            <h3 style="margin-bottom:.5rem;">Créneaux disponibles</h3>
+            <p id="slotsDateLabel" style="font-size:.85rem;color:var(--text-muted);margin-bottom:.5rem;">Sélectionnez une date</p>
+            <div id="slotsGrid" class="slots-grid" role="list" aria-live="polite"></div>
+          </div>
+        </div>
+        <div style="margin-top:1.25rem;display:flex;gap:1rem;justify-content:flex-end;">
+          <button class="btn btn-outline" id="btnStep2Back">← Retour</button>
+          <button class="btn btn-accent" id="btnStep2Next" disabled>Continuer →</button>
+        </div>
+      </div>
+
+      <!-- ── Étape 3 : Récapitulatif et confirmation ── -->
+      <div class="booking-panel" id="panel-3">
+        <div class="card" style="max-width:480px;margin:0 auto;">
+          <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Récapitulatif</h2>
+          <div id="recapContent"></div>
+          <div style="margin-top:1.75rem;display:flex;gap:1rem;flex-wrap:wrap;">
+            <button class="btn btn-outline" id="btnStep3Back">← Modifier</button>
+            <button class="btn btn-accent" id="btnConfirm" style="flex:1;">Confirmer le rendez-vous</button>
+          </div>
+          <div id="confirmAlert" style="margin-top:1rem;display:none;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  
+  <script src="../js/app.js"></script>
+  <script src="../js/reserver.js"></script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+/* ============================================================
+   mes-rdv.css — Styles spécifiques à la page mes-rdv
+   ============================================================ */
+
+    .rdv-filters {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: .4rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 99px;
+      background: var(--surface);
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition);
+    }
+    .filter-btn.active, .filter-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+
+    .rdv-list { display: flex; flex-direction: column; gap: .75rem; }
+
+    .rdv-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      transition: box-shadow var(--transition);
+    }
+    .rdv-card:hover { box-shadow: var(--shadow-sm); }
+    .rdv-card--cancelled { opacity: .6; }
+
+    .rdv-card__date {
+      background: var(--accent-bg);
+      border-radius: var(--radius-md);
+      padding: .6rem .8rem;
+      text-align: center;
+      min-width: 56px;
+      flex-shrink: 0;
+    }
+    .rdv-card__date-day   { font-family: var(--font-main); font-size: 1.6rem; font-weight: 700; color: var(--accent); line-height: 1; }
+    .rdv-card__date-month { font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+
+    .rdv-card__info { flex: 1; }
+    .rdv-card__service { font-weight: 600; margin-bottom: .2rem; }
+    .rdv-card__meta { font-size: .82rem; color: var(--text-muted); }
+
+    .rdv-card__actions { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
+
+    .btn-cancel {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-xl);
+      padding: .4rem .9rem;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--error);
+      cursor: pointer;
+      transition: background var(--transition), border-color var(--transition);
+    }
+    .btn-cancel:hover { background: var(--error-bg); border-color: var(--error); }
+
+    /* Modal confirmation annulation */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal h3 { margin-bottom: .75rem; }
+    .modal p  { color: var(--text-muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .modal__actions { display: flex; gap: .75rem; justify-content: flex-end; }

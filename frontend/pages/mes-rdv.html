@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mes rendez-vous — Salon Élégance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/mes-rdv.css" />
+</head>
+<body>
+
+  <header class="navbar" role="banner">
+    <div class="container navbar__inner">
+      <a href="../index.html" class="navbar__logo">Élégance<span style="color:var(--accent)">.</span></a>
+      <nav class="navbar__links"><a href="../index.html">Accueil</a><a href="reserver.html">Réserver</a></nav>
+      <div class="navbar__actions"></div>
+      <button class="navbar__burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <div class="container">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <p class="eyebrow">Espace client</p>
+          <h1>Mes rendez-vous</h1>
+        </div>
+        <a href="reserver.html" class="btn btn-accent">+ Nouveau RDV</a>
+      </div>
+
+      <!-- Filtres -->
+      <div class="rdv-filters" role="group" aria-label="Filtrer les rendez-vous">
+        <button class="filter-btn active" data-filter="all">Tous</button>
+        <button class="filter-btn" data-filter="confirmed">À venir</button>
+        <button class="filter-btn" data-filter="cancelled">Annulés</button>
+      </div>
+
+      <!-- Liste -->
+      <div id="rdvList" class="rdv-list" role="list" aria-live="polite" aria-busy="true">
+        <div class="loader"><div class="spinner"></div> Chargement de vos rendez-vous…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal annulation -->
+  <div class="modal-overlay hidden" id="cancelModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h3 id="modalTitle">Annuler ce rendez-vous ?</h3>
+      <p id="modalBody">Cette action est irréversible. Le créneau sera libéré immédiatement.</p>
+      <div class="modal__actions">
+        <button class="btn btn-outline" id="modalCancel">Non, garder</button>
+        <button class="btn btn-primary" id="modalConfirm" style="background:var(--error);">Oui, annuler</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <script src="../js/app.js"></script>
+  <script src="../js/mes-rdv.js"></script>
+</body>
+</html>

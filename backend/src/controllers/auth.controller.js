@@ -5,12 +5,26 @@ const db     = require('../config/db');
 
 const SALT_ROUNDS = 10;
 
+// Regex de validation du format email
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // POST /api/auth/register
 async function register(req, res) {
   const { email, password, first_name, last_name } = req.body;
 
+  // Vérification des champs obligatoires
   if (!email || !password || !first_name || !last_name) {
     return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+  }
+
+  // Validation du format email côté serveur
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: 'Format d\'email invalide' });
+  }
+
+  // Validation de la longueur du mot de passe côté serveur
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
   }
 
   try {
@@ -38,6 +52,7 @@ async function register(req, res) {
 // POST /api/auth/login
 async function login(req, res) {
   const { email, password } = req.body;
+
   if (!email || !password) {
     return res.status(400).json({ error: 'Email et mot de passe requis' });
   }
@@ -64,6 +79,7 @@ async function login(req, res) {
   }
 }
 
+// Génération du token JWT
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',

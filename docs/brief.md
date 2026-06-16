@@ -38,7 +38,6 @@
 | API gestion des horaires d'ouverture (backend) | ✅ Livré (API uniquement) |
 | API blocage de dates exceptionnelles (backend) | ✅ Livré (API uniquement) |
 | UI admin — gestion des horaires et jours de fermeture | ⏳ À faire |
-| Pages mentions légales / politique de confidentialité | ⏳ À faire |
 
 ---
 
@@ -90,5 +89,4 @@
 - Interface responsive — mobile-first (validé T25–T27)
 - Authentification sécurisée JWT + bcrypt (validé T21–T24)
 - Gestion des conflits de créneaux côté serveur (validé T10–T11)
-- Conformité RGPD (données personnelles) — mentions légales à compléter
 - Soft delete des prestations (is_active = 0) pour préserver l'historique des RDV

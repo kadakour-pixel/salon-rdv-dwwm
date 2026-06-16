@@ -38,9 +38,8 @@
 | US20 | Désactiver une prestation | ✅ Implémenté |
 | US21 | Modifier les horaires d'ouverture | ⚠️ Partiel |
 | US22 | Bloquer une date exceptionnelle | ⚠️ Partiel |
-| US23 | Consulter les mentions légales | ❌ Non implémenté |
 
-**Bilan :** 20 US complètes · 2 partielles (API prête, UI manquante) · 1 non implémentée
+**Bilan :** 20 US complètes · 2 partielles (API prête, UI manquante)
 
 ---
 
@@ -329,17 +328,3 @@
 - La date bloquée prend le dessus sur l'horaire hebdomadaire normal
 - L'admin peut débloquer la date ultérieurement
 
----
-
-## 7. Pages légales (à créer)
-
-### US23 — Consulter les mentions légales ❌
-> **Non implémentée** — pages `mentions-legales.html` et `politique-confidentialite.html` à créer
-
-**En tant que** visiteur,  
-**je veux** accéder aux mentions légales et à la politique de confidentialité,  
-**afin de** connaître mes droits concernant mes données personnelles (RGPD).
-
-**Critères d'acceptation :**
-- Liens accessibles depuis le footer sur toutes les pages
-- Contenu conforme aux exigences RGPD (responsable de traitement, finalités, durée de conservation, droits d'accès/rectification/suppression)

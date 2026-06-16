@@ -7,7 +7,7 @@
 
 ## Priorité 1 — Fonctionnalités à compléter pour la présentation
 
-### [ ] UI admin — Gestion des horaires d'ouverture (US21)
+### [x] UI admin — Gestion des horaires d'ouverture (US21)
 - Ajouter un onglet "Horaires" dans `dashboard.html`
 - Afficher les 7 jours avec les plages actuelles
 - Permettre la modification de `open_time` / `close_time` pour chaque jour

@@ -111,4 +111,22 @@ async function unblockDate(req, res) {
   }
 }
 
-module.exports = { getAll, getForDay, updateDay, blockDate, unblockDate };
+// DELETE /api/availabilities/:dayOfWeek — admin
+// Supprime les horaires d'un jour (le jour devient fermé)
+async function deleteDay(req, res) {
+  const dayOfWeek = parseInt(req.params.dayOfWeek, 10);
+  if (isNaN(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6)
+    return res.status(400).json({ error: 'Jour invalide (0–6)' });
+  try {
+    await db.execute(
+      'DELETE FROM availabilities WHERE day_of_week = ? AND blocked_date IS NULL',
+      [dayOfWeek]
+    );
+    res.json({ message: 'Jour marqué comme fermé' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+module.exports = { getAll, getForDay, updateDay, blockDate, unblockDate, deleteDay };

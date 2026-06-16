@@ -10,6 +10,7 @@ router.get('/day',            ctrl.getForDay);   // Horaires effectifs pour une 
 
 // Routes admin uniquement
 router.put('/:dayOfWeek',     authenticate, requireRole('admin'), ctrl.updateDay);    // Mettre à jour un jour (0–6)
+router.delete('/:dayOfWeek', authenticate, requireRole('admin'), ctrl.deleteDay);    // Supprimer les horaires d'un jour (fermer)
 router.post('/block',         authenticate, requireRole('admin'), ctrl.blockDate);    // Bloquer une date exceptionnelle
 router.delete('/block/:date', authenticate, requireRole('admin'), ctrl.unblockDate); // Débloquer une date
 

@@ -222,6 +222,114 @@ document.getElementById('serviceModalClose').addEventListener('click', () =>
   document.getElementById('serviceModal').classList.add('hidden')
 );
 
+// Charger les données à l'ouverture de l'onglet "horaires"
+document.querySelector('.dash-tab[data-tab="horaires"]').addEventListener('click', () => loadAvailabilities());
+
+// ── Horaires d'ouverture ──────────────────────────────────
+const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+
+async function loadAvailabilities() {
+  const container = document.getElementById('horairesList');
+  container.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
+  try {
+    const data   = await apiRequest('/availabilities');
+    const weekly = data.filter(r => r.day_of_week !== null && !r.is_blocked);
+    const byDay  = {};
+    weekly.forEach(r => { byDay[r.day_of_week] = r; });
+
+    container.innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table class="service-table">
+          <thead><tr><th>Jour</th><th>Ouverture</th><th>Fermeture</th><th></th></tr></thead>
+          <tbody>
+            ${[1, 2, 3, 4, 5, 6, 0].map(day => {
+              const h  = byDay[day];
+              const op = h ? h.open_time.slice(0, 5) : null;
+              const cl = h ? h.close_time.slice(0, 5) : null;
+              return `<tr>
+                <td><strong>${DAY_NAMES[day]}</strong></td>
+                <td>${op !== null ? op : '<span style="color:var(--text-muted)">—</span>'}</td>
+                <td>${cl !== null ? cl : '<span style="color:var(--text-muted)">—</span>'}</td>
+                <td>
+                  ${h
+                    ? `<button class="btn-icon" data-edit-day="${day}" data-open="${op}" data-close="${cl}">✏️ Modifier</button>
+                       <button class="btn-icon btn-icon--danger" data-close-day="${day}" style="margin-left:.5rem;">✕ Fermer</button>`
+                    : `<button class="btn-icon" data-edit-day="${day}" data-open="" data-close="">+ Ouvrir</button>`
+                  }
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+
+    container.querySelectorAll('[data-edit-day]').forEach(btn =>
+      btn.addEventListener('click', () =>
+        openHorairesModal(parseInt(btn.dataset.editDay), btn.dataset.open, btn.dataset.close)
+      )
+    );
+
+    container.querySelectorAll('[data-close-day]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        const day = parseInt(btn.dataset.closeDay);
+        if (!confirm(`Marquer ${DAY_NAMES[day]} comme fermé ?`)) return;
+        try {
+          await apiRequest(`/availabilities/${day}`, { method: 'DELETE' });
+          showToast(`${DAY_NAMES[day]} marqué comme fermé.`);
+          loadAvailabilities();
+        } catch (err) { showToast(err.message); }
+      })
+    );
+  } catch (err) {
+    container.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+  }
+}
+
+function openHorairesModal(day, openTime, closeTime) {
+  document.getElementById('horairesModalTitle').textContent =
+    openTime ? `Modifier — ${DAY_NAMES[day]}` : `Ouvrir — ${DAY_NAMES[day]}`;
+  document.getElementById('horairesDay').value   = day;
+  document.getElementById('horairesOpen').value  = openTime  || '';
+  document.getElementById('horairesClose').value = closeTime || '';
+  document.getElementById('horairesModalAlert').style.display = 'none';
+  document.getElementById('horairesModal').classList.remove('hidden');
+}
+
+document.getElementById('horairesModalClose').addEventListener('click', () =>
+  document.getElementById('horairesModal').classList.add('hidden')
+);
+
+document.getElementById('horairesForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const day        = document.getElementById('horairesDay').value;
+  const open_time  = document.getElementById('horairesOpen').value;
+  const close_time = document.getElementById('horairesClose').value;
+  if (!open_time || !close_time) return;
+
+  const btn = document.getElementById('horairesSubmit');
+  btn.disabled    = true;
+  btn.textContent = 'Enregistrement…';
+
+  try {
+    await apiRequest(`/availabilities/${day}`, {
+      method: 'PUT',
+      body: JSON.stringify({ open_time, close_time }),
+    });
+    showToast(`Horaires de ${DAY_NAMES[day]} enregistrés.`);
+    document.getElementById('horairesModal').classList.add('hidden');
+    loadAvailabilities();
+  } catch (err) {
+    const alert = document.getElementById('horairesModalAlert');
+    alert.style.display = 'block';
+    alert.className = 'form-alert visible form-alert--error';
+    alert.textContent = err.message;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Enregistrer';
+  }
+});
+
+// ── Prestations ───────────────────────────────────────────
 document.getElementById('serviceForm').addEventListener('submit', async e => {
   e.preventDefault();
   const id       = document.getElementById('serviceId').value;

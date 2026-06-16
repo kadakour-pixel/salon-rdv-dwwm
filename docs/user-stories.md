@@ -1,8 +1,46 @@
 # User Stories — Salon Élégance
 
-**Version :** 1.0  
+**Version :** 1.1  
 **Date :** 16 juin 2026  
 **Projet :** DWWM — Application de prise de rendez-vous
+
+---
+
+## Statut d'implémentation
+
+| Statut | Signification |
+|--------|---------------|
+| ✅ Implémenté | Fonctionnalité complète, testée et validée |
+| ⚠️ Partiel | Backend (API) prêt, interface utilisateur à développer |
+| ❌ Non implémenté | Non développé |
+
+| ID | Description | Statut |
+|----|-------------|--------|
+| US01 | Inscription | ✅ Implémenté |
+| US02 | Connexion | ✅ Implémenté |
+| US03 | Déconnexion | ✅ Implémenté |
+| US04 | Protection des pages authentifiées | ✅ Implémenté |
+| US05 | Consulter le catalogue | ✅ Implémenté |
+| US06 | Choisir une prestation | ✅ Implémenté |
+| US07 | Choisir une date | ✅ Implémenté |
+| US08 | Choisir un créneau horaire | ✅ Implémenté |
+| US09 | Confirmer la réservation | ✅ Implémenté |
+| US10 | Voir mes rendez-vous | ✅ Implémenté |
+| US11 | Filtrer mes rendez-vous | ✅ Implémenté |
+| US12 | Annuler un rendez-vous (client) | ✅ Implémenté |
+| US13 | Voir les métriques du jour | ✅ Implémenté |
+| US14 | Gérer l'agenda journalier | ✅ Implémenté |
+| US15 | Voir tous les rendez-vous | ✅ Implémenté |
+| US16 | Annuler un rendez-vous (admin) | ✅ Implémenté |
+| US17 | Voir la liste des prestations | ✅ Implémenté |
+| US18 | Ajouter une prestation | ✅ Implémenté |
+| US19 | Modifier une prestation | ✅ Implémenté |
+| US20 | Désactiver une prestation | ✅ Implémenté |
+| US21 | Modifier les horaires d'ouverture | ⚠️ Partiel |
+| US22 | Bloquer une date exceptionnelle | ⚠️ Partiel |
+| US23 | Consulter les mentions légales | ❌ Non implémenté |
+
+**Bilan :** 20 US complètes · 2 partielles (API prête, UI manquante) · 1 non implémentée
 
 ---
 
@@ -18,7 +56,7 @@
 
 ## 1. Authentification
 
-### US01 — Inscription
+### US01 — Inscription ✅
 **En tant que** visiteur,  
 **je veux** créer un compte avec mon prénom, nom, email et mot de passe,  
 **afin de** pouvoir réserver des rendez-vous en ligne.
@@ -32,7 +70,7 @@
 
 ---
 
-### US02 — Connexion
+### US02 — Connexion ✅
 **En tant que** visiteur,  
 **je veux** me connecter avec mon email et mon mot de passe,  
 **afin d'** accéder à mon espace personnel.
@@ -44,7 +82,7 @@
 
 ---
 
-### US03 — Déconnexion
+### US03 — Déconnexion ✅
 **En tant que** client ou admin,  
 **je veux** me déconnecter depuis la navbar,  
 **afin de** sécuriser mon session sur un appareil partagé.
@@ -55,7 +93,7 @@
 
 ---
 
-### US04 — Protection des pages authentifiées
+### US04 — Protection des pages authentifiées ✅
 **En tant que** visiteur,  
 **je veux** être redirigé vers la page de connexion si j'essaie d'accéder à une page protégée,  
 **afin que** les données des clients soient sécurisées.
@@ -68,7 +106,7 @@
 
 ## 2. Catalogue de prestations (visiteur / client)
 
-### US05 — Consulter le catalogue
+### US05 — Consulter le catalogue ✅
 **En tant que** visiteur,  
 **je veux** voir la liste des prestations disponibles sur la page d'accueil,  
 **afin de** connaître les services proposés, leur durée et leur prix avant de m'inscrire.
@@ -82,7 +120,7 @@
 
 ## 3. Réservation
 
-### US06 — Choisir une prestation
+### US06 — Choisir une prestation ✅
 **En tant que** client,  
 **je veux** sélectionner une prestation dans un catalogue interactif,  
 **afin de** commencer mon parcours de réservation.
@@ -94,7 +132,7 @@
 
 ---
 
-### US07 — Choisir une date
+### US07 — Choisir une date ✅
 **En tant que** client,  
 **je veux** naviguer dans un calendrier et sélectionner une date disponible,  
 **afin de** voir les créneaux horaires de cette journée.
@@ -106,7 +144,7 @@
 
 ---
 
-### US08 — Choisir un créneau horaire
+### US08 — Choisir un créneau horaire ✅
 **En tant que** client,  
 **je veux** voir les créneaux disponibles pour la date choisie,  
 **afin de** sélectionner l'heure qui me convient.
@@ -119,7 +157,7 @@
 
 ---
 
-### US09 — Confirmer la réservation
+### US09 — Confirmer la réservation ✅
 **En tant que** client,  
 **je veux** voir un récapitulatif de ma réservation avant de confirmer,  
 **afin de** valider ma prestation, ma date et mon heure.
@@ -133,7 +171,7 @@
 
 ## 4. Gestion des rendez-vous (client)
 
-### US10 — Voir mes rendez-vous
+### US10 — Voir mes rendez-vous ✅
 **En tant que** client,  
 **je veux** consulter la liste de tous mes rendez-vous,  
 **afin de** suivre mes réservations passées et à venir.
@@ -145,7 +183,7 @@
 
 ---
 
-### US11 — Filtrer mes rendez-vous
+### US11 — Filtrer mes rendez-vous ✅
 **En tant que** client,  
 **je veux** filtrer mes rendez-vous par statut (tous / à venir / annulés),  
 **afin de** retrouver rapidement ce que je cherche.
@@ -157,7 +195,7 @@
 
 ---
 
-### US12 — Annuler un rendez-vous
+### US12 — Annuler un rendez-vous ✅
 **En tant que** client,  
 **je veux** annuler un de mes rendez-vous à venir,  
 **afin de** libérer le créneau si je ne peux pas me présenter.
@@ -172,7 +210,7 @@
 
 ## 5. Dashboard administrateur
 
-### US13 — Voir les métriques du jour
+### US13 — Voir les métriques du jour ✅
 **En tant qu'** admin,  
 **je veux** voir en un coup d'œil les chiffres clés du salon,  
 **afin de** piloter mon activité quotidiennement.
@@ -183,7 +221,7 @@
 
 ---
 
-### US14 — Gérer l'agenda journalier
+### US14 — Gérer l'agenda journalier ✅
 **En tant qu'** admin,  
 **je veux** visualiser les rendez-vous du jour sous forme de liste chronologique,  
 **afin de** organiser ma journée de travail.
@@ -196,7 +234,7 @@
 
 ---
 
-### US15 — Voir tous les rendez-vous
+### US15 — Voir tous les rendez-vous ✅
 **En tant qu'** admin,  
 **je veux** consulter l'ensemble des rendez-vous avec un filtre par date,  
 **afin de** trouver un RDV spécifique ou suivre l'activité sur une période.
@@ -208,7 +246,7 @@
 
 ---
 
-### US16 — Annuler un rendez-vous (admin)
+### US16 — Annuler un rendez-vous (admin) ✅
 **En tant qu'** admin,  
 **je veux** annuler n'importe quel rendez-vous,  
 **afin de** gérer les imprévus (fermeture, absence) sans intervention du client.
@@ -219,7 +257,7 @@
 
 ---
 
-### US17 — Voir la liste des prestations (admin)
+### US17 — Voir la liste des prestations (admin) ✅
 **En tant qu'** admin,  
 **je veux** voir toutes les prestations dans un tableau de bord,  
 **afin de** les gérer facilement.
@@ -230,7 +268,7 @@
 
 ---
 
-### US18 — Ajouter une prestation
+### US18 — Ajouter une prestation ✅
 **En tant qu'** admin,  
 **je veux** créer une nouvelle prestation via un formulaire modal,  
 **afin d'** enrichir le catalogue proposé aux clients.
@@ -241,7 +279,7 @@
 
 ---
 
-### US19 — Modifier une prestation
+### US19 — Modifier une prestation ✅
 **En tant qu'** admin,  
 **je veux** modifier le nom, la durée ou le prix d'une prestation existante,  
 **afin de** maintenir le catalogue à jour.
@@ -252,7 +290,7 @@
 
 ---
 
-### US20 — Désactiver une prestation
+### US20 — Désactiver une prestation ✅
 **En tant qu'** admin,  
 **je veux** désactiver une prestation sans la supprimer,  
 **afin de** préserver l'historique des rendez-vous associés.
@@ -266,7 +304,9 @@
 
 ## 6. Gestion des horaires (admin) — API disponible, UI à faire
 
-### US21 — Modifier les horaires d'ouverture
+### US21 — Modifier les horaires d'ouverture ⚠️
+> **API prête** (`PUT /api/availabilities/:dayOfWeek`) · **Interface admin non développée**
+
 **En tant qu'** admin,  
 **je veux** modifier les horaires d'ouverture de chaque jour de la semaine,  
 **afin que** les créneaux proposés aux clients reflètent les heures réelles du salon.
@@ -278,7 +318,9 @@
 
 ---
 
-### US22 — Bloquer une date exceptionnelle
+### US22 — Bloquer une date exceptionnelle ⚠️
+> **API prête** (`POST /api/availabilities/block`, `DELETE /api/availabilities/block/:date`) · **Interface admin non développée**
+
 **En tant qu'** admin,  
 **je veux** bloquer une date précise (congés, fermeture exceptionnelle),  
 **afin qu'** aucun créneau ne soit proposé ce jour-là.
@@ -291,7 +333,9 @@
 
 ## 7. Pages légales (à créer)
 
-### US23 — Consulter les mentions légales
+### US23 — Consulter les mentions légales ❌
+> **Non implémentée** — pages `mentions-legales.html` et `politique-confidentialite.html` à créer
+
 **En tant que** visiteur,  
 **je veux** accéder aux mentions légales et à la politique de confidentialité,  
 **afin de** connaître mes droits concernant mes données personnelles (RGPD).

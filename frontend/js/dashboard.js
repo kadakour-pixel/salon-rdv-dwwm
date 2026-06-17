@@ -17,6 +17,9 @@ function switchTab(tabId) {
   document.querySelector(`.dash-tab[data-tab="${tabId}"]`).classList.add('active');
   document.querySelector(`.dash-tab[data-tab="${tabId}"]`).setAttribute('aria-selected', 'true');
   document.getElementById(`panel-${tabId}`).classList.add('active');
+
+  if (tabId === 'clients')  loadAllRdv();
+  if (tabId === 'horaires') loadAvailabilities();
 }
 
 document.querySelectorAll('.dash-tab').forEach(btn =>
@@ -25,9 +28,6 @@ document.querySelectorAll('.dash-tab').forEach(btn =>
 document.querySelectorAll('.dash-nav a').forEach(a =>
   a.addEventListener('click', e => { e.preventDefault(); switchTab(a.dataset.tab); })
 );
-
-// Charger les données à l'ouverture de l'onglet "clients"
-document.querySelector('.dash-tab[data-tab="clients"]').addEventListener('click', () => loadAllRdv());
 
 // ── Métriques ─────────────────────────────────────────────
 async function loadMetrics() {
@@ -222,8 +222,6 @@ document.getElementById('serviceModalClose').addEventListener('click', () =>
   document.getElementById('serviceModal').classList.add('hidden')
 );
 
-// Charger les données à l'ouverture de l'onglet "horaires"
-document.querySelector('.dash-tab[data-tab="horaires"]').addEventListener('click', () => loadAvailabilities());
 
 // ── Horaires d'ouverture ──────────────────────────────────
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
@@ -232,10 +230,25 @@ async function loadAvailabilities() {
   const container = document.getElementById('horairesList');
   container.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
   try {
-    const data   = await apiRequest('/availabilities');
-    const weekly = data.filter(r => r.day_of_week !== null && !r.is_blocked);
-    const byDay  = {};
+    const data    = await apiRequest('/availabilities');
+    const weekly  = data.filter(r => r.day_of_week !== null && !r.is_blocked);
+    const blocked = data.filter(r => r.is_blocked && r.blocked_date);
+    const byDay   = {};
     weekly.forEach(r => { byDay[r.day_of_week] = r; });
+
+    const blockedItems = blocked.map(b => {
+      const dateStr = typeof b.blocked_date === 'string'
+        ? b.blocked_date.slice(0, 10)
+        : b.blocked_date.toISOString().slice(0, 10);
+      // T12:00:00 évite le décalage UTC qui ferait changer le jour affiché
+      const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      });
+      return `<li style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:var(--surface-2);border-radius:var(--radius-md);border:1.5px solid var(--border);">
+        <span>🔒 ${label}</span>
+        <button class="btn-icon btn-icon--danger" data-unblock="${dateStr}">✕ Débloquer</button>
+      </li>`;
+    }).join('');
 
     container.innerHTML = `
       <div class="card" style="padding:0;overflow:hidden;">
@@ -261,6 +274,19 @@ async function loadAvailabilities() {
             }).join('')}
           </tbody>
         </table>
+      </div>
+
+      <div style="margin-top:2rem;">
+        <h3 style="font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1rem;">Fermetures exceptionnelles</h3>
+        <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
+          <input type="date" id="blockDateInput"
+            style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
+          <button class="btn btn-accent" id="btnBlockDate" style="padding:.4rem 1rem;font-size:.85rem;">Bloquer ce jour</button>
+        </div>
+        ${blocked.length === 0
+          ? '<p style="color:var(--text-muted);font-size:.9rem;">Aucune fermeture exceptionnelle planifiée.</p>'
+          : `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem;">${blockedItems}</ul>`
+        }
       </div>`;
 
     container.querySelectorAll('[data-edit-day]').forEach(btn =>
@@ -276,6 +302,31 @@ async function loadAvailabilities() {
         try {
           await apiRequest(`/availabilities/${day}`, { method: 'DELETE' });
           showToast(`${DAY_NAMES[day]} marqué comme fermé.`);
+          loadAvailabilities();
+        } catch (err) { showToast(err.message); }
+      })
+    );
+
+    document.getElementById('btnBlockDate').addEventListener('click', async () => {
+      const dateVal = document.getElementById('blockDateInput').value;
+      if (!dateVal) { showToast('Sélectionne une date.'); return; }
+      try {
+        await apiRequest('/availabilities/block', {
+          method: 'POST',
+          body: JSON.stringify({ blocked_date: dateVal }),
+        });
+        showToast('Jour bloqué.');
+        loadAvailabilities();
+      } catch (err) { showToast(err.message); }
+    });
+
+    container.querySelectorAll('[data-unblock]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        const date = btn.dataset.unblock;
+        if (!confirm(`Débloquer le ${date} ?`)) return;
+        try {
+          await apiRequest(`/availabilities/block/${date}`, { method: 'DELETE' });
+          showToast('Date débloquée.');
           loadAvailabilities();
         } catch (err) { showToast(err.message); }
       })

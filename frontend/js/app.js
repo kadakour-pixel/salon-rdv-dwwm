@@ -67,6 +67,7 @@ function initNavbar() {
       ? `<a href="${prefix}dashboard.html" class="btn btn-outline">Dashboard</a>
          <button class="btn btn-primary" id="logoutBtn">Déconnexion</button>`
       : `<a href="${prefix}mes-rdv.html" class="btn btn-outline">Mes RDV</a>
+         <a href="${prefix}profil.html" class="btn btn-outline">Mon profil</a>
          <button class="btn btn-primary" id="logoutBtn">Déconnexion</button>`;
 
     document.getElementById('logoutBtn')?.addEventListener('click', () => {

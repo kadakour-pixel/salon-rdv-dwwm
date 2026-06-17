@@ -14,13 +14,13 @@
 - Appeler `PUT /api/availabilities/:dayOfWeek` (backend déjà prêt)
 - Permettre de marquer un jour comme fermé (supprimer ou laisser vide)
 
-### [ ] UI admin — Gestion des fermetures exceptionnelles (US22)
+### [x] UI admin — Gestion des fermetures exceptionnelles (US22)
 - Ajouter un sélecteur de date dans le même onglet "Horaires"
 - Appeler `POST /api/availabilities/block` pour bloquer une date
 - Appeler `DELETE /api/availabilities/block/:date` pour débloquer
 - Afficher la liste des dates actuellement bloquées
 
-### [ ] Profil client — modification des informations
+### [x] Profil client — modification des informations
 - Page `pages/profil.html` avec formulaire de modification (prénom, nom, email)
 - Endpoint `PUT /api/auth/me` côté backend
 

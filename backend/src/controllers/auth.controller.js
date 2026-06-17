@@ -79,6 +79,52 @@ async function login(req, res) {
   }
 }
 
+// GET /api/auth/me — client connecté
+async function getMe(req, res) {
+  try {
+    const [[user]] = await db.execute(
+      'SELECT id, first_name, last_name, email, role FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+// PUT /api/auth/me — client connecté
+async function updateMe(req, res) {
+  const { first_name, last_name, email } = req.body;
+
+  if (!first_name || !last_name || !email) {
+    return res.status(400).json({ error: 'Tous les champs sont obligatoires' });
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: "Format d'email invalide" });
+  }
+
+  try {
+    const [existing] = await db.execute(
+      'SELECT id FROM users WHERE email = ? AND id != ?',
+      [email, req.user.id]
+    );
+    if (existing.length > 0) {
+      return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+    }
+
+    await db.execute(
+      'UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?',
+      [first_name, last_name, email, req.user.id]
+    );
+    res.json({ message: 'Profil mis à jour' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
 // Génération du token JWT
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -86,4 +132,4 @@ function signToken(payload) {
   });
 }
 
-module.exports = { register, login };
+module.exports = { register, login, getMe, updateMe };

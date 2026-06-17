@@ -1,7 +1,7 @@
 # User Stories — Salon Élégance
 
-**Version :** 1.1  
-**Date :** 16 juin 2026  
+**Version :** 1.2  
+**Date :** 17 juin 2026  
 **Projet :** DWWM — Application de prise de rendez-vous
 
 ---
@@ -36,10 +36,11 @@
 | US18 | Ajouter une prestation | ✅ Implémenté |
 | US19 | Modifier une prestation | ✅ Implémenté |
 | US20 | Désactiver une prestation | ✅ Implémenté |
-| US21 | Modifier les horaires d'ouverture | ⚠️ Partiel |
-| US22 | Bloquer une date exceptionnelle | ⚠️ Partiel |
+| US21 | Modifier les horaires d'ouverture | ✅ Implémenté |
+| US22 | Bloquer une date exceptionnelle | ✅ Implémenté |
+| US23 | Modifier son profil (prénom, nom, email) | ✅ Implémenté |
 
-**Bilan :** 20 US complètes · 2 partielles (API prête, UI manquante)
+**Bilan :** 23 US complètes · 0 partielles
 
 ---
 
@@ -301,11 +302,9 @@
 
 ---
 
-## 6. Gestion des horaires (admin) — API disponible, UI à faire
+## 6. Gestion des horaires (admin)
 
-### US21 — Modifier les horaires d'ouverture ⚠️
-> **API prête** (`PUT /api/availabilities/:dayOfWeek`) · **Interface admin non développée**
-
+### US21 — Modifier les horaires d'ouverture ✅
 **En tant qu'** admin,  
 **je veux** modifier les horaires d'ouverture de chaque jour de la semaine,  
 **afin que** les créneaux proposés aux clients reflètent les heures réelles du salon.
@@ -317,9 +316,7 @@
 
 ---
 
-### US22 — Bloquer une date exceptionnelle ⚠️
-> **API prête** (`POST /api/availabilities/block`, `DELETE /api/availabilities/block/:date`) · **Interface admin non développée**
-
+### US22 — Bloquer une date exceptionnelle ✅
 **En tant qu'** admin,  
 **je veux** bloquer une date précise (congés, fermeture exceptionnelle),  
 **afin qu'** aucun créneau ne soit proposé ce jour-là.
@@ -327,4 +324,18 @@
 **Critères d'acceptation :**
 - La date bloquée prend le dessus sur l'horaire hebdomadaire normal
 - L'admin peut débloquer la date ultérieurement
+
+---
+
+## 7. Profil client
+
+### US23 — Modifier son profil ✅
+**En tant que** client,  
+**je veux** modifier mon prénom, mon nom et mon adresse e-mail,  
+**afin de** maintenir mes informations personnelles à jour.
+
+**Critères d'acceptation :**
+- Le formulaire est pré-rempli avec les données actuelles (chargées via `GET /api/auth/me`)
+- Un email déjà utilisé par un autre compte retourne une erreur 409
+- Un message de confirmation est affiché après l'enregistrement
 

@@ -63,3 +63,27 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - **Ajout** de `docs/todo.md` : liste priorisée des améliorations post-MVP (fonctionnalités manquantes, sécurité, qualité)
 - **Ajout** de `docs/journal-de-bord.md` (ce fichier)
 - **Ajout** de `CLAUDE.md` à la racine : contexte de formation et directives techniques pour l'assistant IA (utilisation déclarée devant le jury)
+
+---
+
+## Entrée 5 — Finalisation des fonctionnalités admin et profil client
+**Date :** 17 juin 2026
+
+**Corrections de bugs**
+- Correction du spinner bloqué dans l'onglet "Horaires" du dashboard admin : le chargement des données n'était déclenché que par les onglets (boutons), pas par la navigation latérale. Centralisation des appels dans `switchTab()`.
+- Correction de l'affichage des noms de clients dans l'agenda admin (diagnostic : les données étaient bien présentes côté API).
+- Correction des alertes de formulaire sur la page profil : la classe CSS `.form-alert` était définie uniquement dans `login.css`. Déplacement dans `pages.css` pour la rendre disponible sur toutes les pages.
+
+**US21 — Horaires d'ouverture (interface admin)**
+- L'onglet "Horaires" du dashboard affiche les 7 jours avec ouverture/fermeture modifiables via modal.
+- Bouton "✕ Fermer" pour marquer un jour comme fermé, bouton "+ Ouvrir" pour le réouvrir.
+
+**US22 — Fermetures exceptionnelles (interface admin)**
+- Ajout d'une section "Fermetures exceptionnelles" dans l'onglet "Horaires".
+- Sélecteur de date + bouton "Bloquer ce jour" → appelle `POST /api/availabilities/block`.
+- Liste des dates bloquées avec bouton "✕ Débloquer" → appelle `DELETE /api/availabilities/block/:date`.
+
+**US23 — Profil client**
+- Nouveaux endpoints : `GET /api/auth/me` et `PUT /api/auth/me` (auth.controller.js, auth.routes.js).
+- Nouvelle page `pages/profil.html` + script `js/profil.js` : formulaire pré-rempli, validation, message de confirmation.
+- Lien "Mon profil" ajouté dans la navbar pour les clients connectés.

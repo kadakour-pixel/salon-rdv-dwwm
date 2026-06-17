@@ -80,6 +80,18 @@
 }
 @media (max-width: 540px) { .form-row { grid-template-columns: 1fr; } }
 
+/* ── Alerte formulaire ───────────────────────────────────── */
+.form-alert {
+  display: none;
+  padding: .75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: .88rem;
+  margin-bottom: 1rem;
+}
+.form-alert.visible      { display: block; }
+.form-alert--error       { background: var(--error-bg);   color: var(--error); }
+.form-alert--success     { background: var(--success-bg); color: var(--success); }
+
 /* ── Badges statuts ──────────────────────────────────────── */
 .badge {
   display: inline-flex;

@@ -48,6 +48,7 @@ async function getAvailableSlots(req, res) {
   }
 }
 
+// Génère les créneaux à la volée (pas stockés en BDD) → toujours à jour avec les horaires et les RDV existants
 function generateSlots(date, avail, duration, booked) {
   const slots = [];
   const [oh, om] = avail.open_time.split(':').map(Number);
@@ -61,6 +62,7 @@ function generateSlots(date, avail, duration, booked) {
     const endMin   = current + duration;
     const endStr   = `${date} ${String(Math.floor(endMin / 60)).padStart(2,'0')}:${String(endMin % 60).padStart(2,'0')}:00`;
 
+    // Détection de chevauchement : un créneau est pris si son début < fin d'un RDV ET sa fin > début d'un RDV
     const overlap = booked.some(b => {
       const bStart = new Date(b.start_at).getTime();
       const bEnd   = new Date(b.end_at).getTime();
@@ -91,8 +93,7 @@ async function create(req, res) {
     );
     if (!service) return res.status(404).json({ error: 'Prestation introuvable' });
 
-    // Calcul de end_at sans conversion UTC pour éviter le décalage de fuseau horaire
-    // On parse start_at comme chaîne locale et on ajoute la durée en minutes
+    // Calcul de end_at avec des chaînes (pas new Date) pour éviter les décalages de fuseau horaire UTC
     const [datePart, timePart] = start_at.split(' ');
     const [hh, mm, ss] = timePart.split(':').map(Number);
     const totalMin = hh * 60 + mm + service.duration_minutes;

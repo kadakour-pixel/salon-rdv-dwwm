@@ -61,7 +61,7 @@ async function updateDay(req, res) {
   }
 
   try {
-    // Upsert : met à jour si existe, insère sinon
+    // Upsert (INSERT + UPDATE en une seule requête) : crée le jour s'il n'existe pas, sinon met à jour
     await db.execute(
       `INSERT INTO availabilities (day_of_week, open_time, close_time, is_blocked)
        VALUES (?, ?, ?, 0)

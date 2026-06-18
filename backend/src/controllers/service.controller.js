@@ -79,6 +79,7 @@ async function update(req, res) {
 }
 
 // DELETE /api/services/:id — admin (soft delete)
+// Suppression logique : on met is_active = 0 au lieu de DELETE pour garder l'historique des RDV passés
 async function remove(req, res) {
   try {
     const [result] = await db.execute(

@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
 const db     = require('../config/db');
 
+// Coût du hashage bcrypt : 10 = bon compromis sécurité/performance (~100ms par hash)
 const SALT_ROUNDS = 10;
 
 // Regex de validation du format email
@@ -61,6 +62,7 @@ async function login(req, res) {
     const [rows] = await db.execute(
       'SELECT id, email, password_hash, role FROM users WHERE email = ?', [email]
     );
+    // Même message vague pour email inconnu ET mauvais mot de passe → ne révèle pas si l'email existe (sécurité)
     if (rows.length === 0) {
       return res.status(401).json({ error: 'Identifiants incorrects' });
     }
@@ -106,6 +108,7 @@ async function updateMe(req, res) {
   }
 
   try {
+    // Vérifier qu'un autre utilisateur n'utilise pas déjà ce nouvel email
     const [existing] = await db.execute(
       'SELECT id FROM users WHERE email = ? AND id != ?',
       [email, req.user.id]

@@ -96,3 +96,21 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - Responsive dashboard : onglets en retour à la ligne sur mobile (flex-wrap), métriques adaptées petit écran.
 - Taille de police globale augmentée (16px → 17px) pour une meilleure lisibilité.
 - Plan de tests mis à jour : 34/34 tests passés (T28–T34 couvrant US21, US22, US23, validation, sécurité).
+
+---
+
+## Entrée 6 — Revue de code, commentaires et corrections
+**Date :** 18 juin 2026
+
+**Commentaires ajoutés dans le code**
+- Ajout de commentaires en français sur les points clés du backend et du frontend, pour aider à la défense devant le jury.
+- Fichiers commentés : `db.js`, `auth.controller.js`, `service.controller.js`, `appointment.controller.js`, `availability.controller.js`, `app.js`, `reserver.js`, `profil.js`, `dashboard.js`.
+- Principes suivis : expliquer le POURQUOI (pas le QUOI), une ligne max, uniquement là où c'est non évident.
+
+**Corrections de bugs détectés lors de la revue**
+- `dashboard.js` : ajout d'un try/catch autour de la désactivation de prestation (erreur non gérée → crash silencieux).
+- `profil.js` : un admin accédant à la page profil était redirigé vers `login.html` au lieu de `dashboard.html`.
+- `dashboard.js` : remplacement de `toISOString().slice(0,10)` par une date locale dans les métriques et l'agenda (décalage UTC possible entre minuit et 2h).
+- `reserver.js` : même correction pour la date du calendrier de réservation.
+
+**Résultat :** 38/38 tests passés (T35–T38 ajoutés).

@@ -28,6 +28,7 @@ async function apiRequest(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
 
+  // Si le token est expiré ou invalide, on déconnecte et redirige vers login automatiquement
   if (res.status === 401) {
     Auth.clear();
     window.location.href = window.location.pathname.includes('/pages/') ? 'login.html' : 'pages/login.html';

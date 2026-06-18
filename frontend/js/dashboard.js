@@ -32,13 +32,16 @@ document.querySelectorAll('.dash-nav a').forEach(a =>
 // ── Métriques ─────────────────────────────────────────────
 async function loadMetrics() {
   try {
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Date locale (pas UTC) pour éviter un décalage entre minuit et 2h du matin
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const [allRdv, services] = await Promise.all([
       apiRequest('/appointments'),
       apiRequest('/services'),
     ]);
     const todayRdv = allRdv.filter(r => r.start_at.startsWith(todayStr));
 
+    // Calcul du lundi de la semaine courante pour filtrer les RDV de la semaine
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
     weekStart.setHours(0, 0, 0, 0);
@@ -74,7 +77,7 @@ async function loadAgenda() {
   list.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
 
   try {
-    const dateStr = agendaDate.toISOString().slice(0, 10);
+    const dateStr = `${agendaDate.getFullYear()}-${String(agendaDate.getMonth() + 1).padStart(2, '0')}-${String(agendaDate.getDate()).padStart(2, '0')}`;
     const rdvs    = await apiRequest(`/appointments?date=${dateStr}`);
 
     if (!rdvs.length) {
@@ -232,9 +235,13 @@ async function loadServices() {
     tbody.querySelectorAll('[data-delete]').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Désactiver cette prestation ?')) return;
-        await apiRequest(`/services/${btn.dataset.delete}`, { method: 'DELETE' });
-        showToast('Prestation désactivée.');
-        loadServices();
+        try {
+          await apiRequest(`/services/${btn.dataset.delete}`, { method: 'DELETE' });
+          showToast('Prestation désactivée.');
+          loadServices();
+        } catch (err) {
+          showToast(err.message || 'Erreur lors de la désactivation.', 'error');
+        }
       });
     });
   } catch (err) {

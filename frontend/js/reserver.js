@@ -103,13 +103,14 @@ function renderCalendar() {
     grid.appendChild(el);
   });
 
-  // Offset premier jour (lundi = 0)
+  // Offset : JS retourne 0=dimanche, on convertit en 0=lundi pour un calendrier français
   const firstDay = new Date(calYear, calMonth, 1);
   let startDow = firstDay.getDay();
   startDow = startDow === 0 ? 6 : startDow - 1;
 
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-  const todayStr    = now.toISOString().slice(0, 10);
+  // Date locale (pas UTC) pour éviter un décalage entre minuit et 2h du matin
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   for (let i = 0; i < startDow; i++) {
     const el = document.createElement('div');
@@ -149,6 +150,7 @@ async function selectDate(dateStr, el) {
   const label     = document.getElementById('slotsDateLabel');
   const slotsGrid = document.getElementById('slotsGrid');
 
+  // T12:00:00 évite un décalage UTC qui afficherait le mauvais jour
   label.textContent = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
   });

@@ -1,9 +1,9 @@
 # Plan de tests — Salon Élégance
 ## Projet DWWM — Application de prise de rendez-vous
 
-**Version :** 2.0  
-**Date :** 17 juin 2026  
-**Résultat global : 34/34 tests passés ✅**
+**Version :** 3.0  
+**Date :** 18 juin 2026  
+**Résultat global : 38/38 tests passés ✅**
 
 ---
 
@@ -97,7 +97,18 @@
 
 ---
 
-## 8. Bugs détectés et corrigés
+## 8. Revue de code et corrections (T35–T38)
+
+| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
+|----|-------------|-----------------|------------------|-----------------|
+| T35 | Erreur gérée lors de la désactivation d'une prestation | Couper le backend + clic "Désactiver" sur une prestation | Message d'erreur affiché (pas de crash silencieux) | ✅ PASS |
+| T36 | Admin redirigé vers dashboard depuis la page profil | Connexion admin → accès direct `pages/profil.html` | Redirection vers `dashboard.html` (pas login) | ✅ PASS |
+| T37 | Date correcte dans les métriques du dashboard | Vérification visuelle de la date affichée dans l'agenda | Date du jour affichée correctement | ✅ PASS |
+| T38 | Date correcte dans le calendrier de réservation | Vérification visuelle de la date dans le calendrier | Jour actuel correctement mis en surbrillance | ✅ PASS |
+
+---
+
+## 9. Bugs détectés et corrigés
 
 | Bug | Description | Correction apportée |
 |-----|-------------|---------------------|
@@ -109,10 +120,13 @@
 | Mobile | Burger menu n'affichait pas les liens après connexion | Initialisation du burger après injection dynamique dans `app.js` |
 | Dashboard | Spinner infini dans l'onglet Horaires via la nav latérale | Centralisation du chargement des données dans `switchTab()` |
 | Profil | Message de confirmation invisible sur `profil.html` | Déplacement de `.form-alert` de `login.css` vers `pages.css` |
+| T35 | Désactivation prestation sans try/catch → crash silencieux | Ajout de try/catch dans `dashboard.js` |
+| T36 | Admin redirigé vers login au lieu de dashboard sur profil.html | Séparation des conditions dans `profil.js` |
+| T37-T38 | `toISOString()` renvoie date UTC, décalage possible la nuit | Remplacement par date locale dans `dashboard.js` et `reserver.js` |
 
 ---
 
-## 9. Résumé
+## 10. Résumé
 
 | Catégorie | Tests | Passés | Échoués |
 |-----------|-------|--------|---------|
@@ -123,6 +137,7 @@
 | Horaires et fermetures | 3 | 3 | 0 |
 | Profil client | 1 | 1 | 0 |
 | Validation et sécurité | 3 | 3 | 0 |
-| **Total** | **34** | **34** | **0** |
+| Revue de code et corrections | 4 | 4 | 0 |
+| **Total** | **38** | **38** | **0** |
 
-> **Taux de réussite : 100%** — Application validée et prête pour la soutenance.
+> **Taux de réussite : 100%** — Application validée et prête pour la soustenance.

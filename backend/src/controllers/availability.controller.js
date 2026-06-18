@@ -80,6 +80,9 @@ async function updateDay(req, res) {
 async function blockDate(req, res) {
   const { blocked_date } = req.body;
   if (!blocked_date) return res.status(400).json({ error: 'Champ blocked_date requis (YYYY-MM-DD)' });
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(blocked_date)) {
+    return res.status(400).json({ error: 'Format de date invalide (attendu : YYYY-MM-DD)' });
+  }
 
   try {
     await db.execute(

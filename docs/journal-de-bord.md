@@ -87,3 +87,8 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - Nouveaux endpoints : `GET /api/auth/me` et `PUT /api/auth/me` (auth.controller.js, auth.routes.js).
 - Nouvelle page `pages/profil.html` + script `js/profil.js` : formulaire pré-rempli, validation, message de confirmation.
 - Lien "Mon profil" ajouté dans la navbar pour les clients connectés.
+
+**Améliorations de sécurité et robustesse**
+- Validation des entrées backend : `duration_minutes` (entier positif), `price` (nombre positif) dans `service.controller.js`, format `YYYY-MM-DD` pour `blocked_date` dans `availability.controller.js`.
+- Détection des réponses 401 dans `apiRequest()` : si le token JWT est expiré ou invalide, le localStorage est vidé et l'utilisateur est redirigé vers la page de connexion.
+- Illustration SVG animée dans la section hero de la page d'accueil (keyframes CSS : flottement, scintillement, mouvement des ciseaux).

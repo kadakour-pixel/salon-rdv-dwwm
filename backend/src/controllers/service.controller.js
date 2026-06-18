@@ -35,6 +35,12 @@ async function create(req, res) {
   if (!name || !duration_minutes || price === undefined) {
     return res.status(400).json({ error: 'Champs obligatoires : name, duration_minutes, price' });
   }
+  if (!Number.isInteger(Number(duration_minutes)) || Number(duration_minutes) <= 0) {
+    return res.status(400).json({ error: 'La durée doit être un entier positif' });
+  }
+  if (isNaN(Number(price)) || Number(price) < 0) {
+    return res.status(400).json({ error: 'Le prix doit être un nombre positif' });
+  }
   try {
     const [result] = await db.execute(
       'INSERT INTO services (name, duration_minutes, price) VALUES (?, ?, ?)',
@@ -52,6 +58,12 @@ async function update(req, res) {
   const { name, duration_minutes, price } = req.body;
   if (!name || !duration_minutes || price === undefined) {
     return res.status(400).json({ error: 'Champs obligatoires : name, duration_minutes, price' });
+  }
+  if (!Number.isInteger(Number(duration_minutes)) || Number(duration_minutes) <= 0) {
+    return res.status(400).json({ error: 'La durée doit être un entier positif' });
+  }
+  if (isNaN(Number(price)) || Number(price) < 0) {
+    return res.status(400).json({ error: 'Le prix doit être un nombre positif' });
   }
   try {
     const [result] = await db.execute(

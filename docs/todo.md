@@ -1,7 +1,7 @@
 # Todo — Salon Élégance
 
-**Dernière mise à jour :** 16 juin 2026  
-**État du MVP :** 27/27 tests passés — fonctionnalités core livrées
+**Dernière mise à jour :** 17 juin 2026  
+**État du MVP :** 27/27 tests passés — 23/23 user stories implémentées — toutes les tâches P1 et P2 terminées
 
 ---
 
@@ -28,16 +28,16 @@
 
 ## Priorité 2 — Améliorations optionnelles
 
-### [ ] Photo réelle du salon
-- Remplacer le placeholder SVG dans la section hero de `index.html`
-- Ajouter une vraie image optimisée (format WebP recommandé)
+### [x] Illustration animée du salon
+- Animation SVG dans la section hero de `index.html`
+- Keyframes CSS pour les éléments du salon (flottement, scintillement, ciseaux)
 
-### [ ] Validation des entrées (backend)
+### [x] Validation des entrées (backend)
 - Valider que `duration_minutes` est un entier positif dans `service.controller.js`
 - Valider que `price` est un nombre positif
 - Valider le format `YYYY-MM-DD` pour les dates dans les endpoints availabilities
 
-### [ ] Vérification de l'expiration JWT côté frontend
+### [x] Vérification de l'expiration JWT côté frontend
 - Détecter les réponses 401 dans `apiRequest()` (app.js) et rediriger vers login
 - Actuellement, un token expiré laisse l'utilisateur sur la page avec un état cassé
 

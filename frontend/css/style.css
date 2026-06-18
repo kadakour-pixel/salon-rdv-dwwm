@@ -40,7 +40,7 @@
 html { scroll-behavior: smooth; }
 body {
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 17px;
   color: var(--text-main);
   background: var(--surface);
   line-height: 1.6;

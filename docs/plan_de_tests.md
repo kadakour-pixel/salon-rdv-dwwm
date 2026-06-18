@@ -1,9 +1,9 @@
 # Plan de tests — Salon Élégance
 ## Projet DWWM — Application de prise de rendez-vous
 
-**Version :** 1.0  
-**Date :** 11 juin 2026  
-**Résultat global : 27/27 tests passés ✅**
+**Version :** 2.0  
+**Date :** 17 juin 2026  
+**Résultat global : 34/34 tests passés ✅**
 
 ---
 
@@ -69,7 +69,35 @@
 
 ---
 
-## 5. Bugs détectés et corrigés
+## 5. Horaires et fermetures exceptionnelles (T28–T30)
+
+| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
+|----|-------------|-----------------|------------------|-----------------|
+| T28 | Modifier les horaires d'un jour (US21) | Onglet Horaires → Modifier Lundi → 10:00–18:00 | Horaires mis à jour en BDD, tableau rafraîchi | ✅ PASS |
+| T29 | Bloquer une date exceptionnelle (US22) | Onglet Horaires → Date: 2026-12-25 → "Bloquer ce jour" | Date ajoutée dans la liste bloquée, aucun créneau proposé ce jour | ✅ PASS |
+| T30 | Débloquer une date (US22) | Clic "✕ Débloquer" sur 2026-12-25 | Date retirée, créneaux à nouveau proposés | ✅ PASS |
+
+---
+
+## 6. Profil client (T31)
+
+| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
+|----|-------------|-----------------|------------------|-----------------|
+| T31 | Modifier son profil (US23) | Page Mon profil → Prénom: Marie, Nom: Durand, Email: marie@test.fr | Message "Profil mis à jour", données modifiées en BDD | ✅ PASS |
+
+---
+
+## 7. Validation et sécurité (T32–T34)
+
+| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
+|----|-------------|-----------------|------------------|-----------------|
+| T32 | Créer prestation avec durée négative | POST /api/services avec duration_minutes: -30 | 400 + "La durée doit être un entier positif" | ✅ PASS |
+| T33 | Créer prestation avec prix négatif | POST /api/services avec price: -10 | 400 + "Le prix doit être un nombre positif" | ✅ PASS |
+| T34 | Redirection sur token expiré | Modifier le token dans localStorage + rafraîchir | Redirection vers login.html, localStorage vidé | ✅ PASS |
+
+---
+
+## 8. Bugs détectés et corrigés
 
 | Bug | Description | Correction apportée |
 |-----|-------------|---------------------|
@@ -79,10 +107,12 @@
 | T14 | Hash bcrypt générique incompatible avec la version Node locale | Hash régénéré localement et mis à jour en BDD et `schema.sql` |
 | Navbar | Lien Dashboard pointait vers `pages/pages/dashboard.html` | Fonction `pagesPrefix()` ajoutée dans `app.js` |
 | Mobile | Burger menu n'affichait pas les liens après connexion | Initialisation du burger après injection dynamique dans `app.js` |
+| Dashboard | Spinner infini dans l'onglet Horaires via la nav latérale | Centralisation du chargement des données dans `switchTab()` |
+| Profil | Message de confirmation invisible sur `profil.html` | Déplacement de `.form-alert` de `login.css` vers `pages.css` |
 
 ---
 
-## 6. Résumé
+## 9. Résumé
 
 | Catégorie | Tests | Passés | Échoués |
 |-----------|-------|--------|---------|
@@ -90,6 +120,9 @@
 | Parcours admin | 7 | 7 | 0 |
 | Sécurité API | 4 | 4 | 0 |
 | Responsive | 3 | 3 | 0 |
-| **Total** | **27** | **27** | **0** |
+| Horaires et fermetures | 3 | 3 | 0 |
+| Profil client | 1 | 1 | 0 |
+| Validation et sécurité | 3 | 3 | 0 |
+| **Total** | **34** | **34** | **0** |
 
 > **Taux de réussite : 100%** — Application validée et prête pour la soutenance.

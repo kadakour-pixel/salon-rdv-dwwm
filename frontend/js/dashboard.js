@@ -91,6 +91,9 @@ async function loadAgenda() {
       const time = new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const end  = new Date(r.end_at).toLocaleTimeString('fr-FR',   { hour: '2-digit', minute: '2-digit' });
       const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
+      const cancelBtn = r.status !== 'cancelled'
+        ? `<button class="btn-icon btn-icon--danger" data-cancel-rdv="${r.id}" style="font-size:.78rem;">✕ Annuler</button>`
+        : '';
       return `
         <div class="agenda-item" role="listitem">
           <span class="agenda-item__time">${time} – ${end}</span>
@@ -98,9 +101,24 @@ async function loadAgenda() {
             <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
             <p class="agenda-item__service">${r.service_name} · ${r.duration_minutes} min</p>
           </div>
-          <span class="badge badge--${r.status}">${statusLabel}</span>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span class="badge badge--${r.status}">${statusLabel}</span>
+            ${cancelBtn}
+          </div>
         </div>`;
     }).join('');
+
+    list.querySelectorAll('[data-cancel-rdv]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Annuler ce rendez-vous ?')) return;
+        try {
+          await apiRequest(`/appointments/${btn.dataset.cancelRdv}`, { method: 'DELETE' });
+          showToast('Rendez-vous annulé.');
+          loadAgenda();
+          loadMetrics();
+        } catch (err) { showToast(err.message); }
+      })
+    );
   } catch (err) {
     list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
   }
@@ -138,6 +156,9 @@ async function loadAllRdv(dateFilter = '') {
       const date = new Date(r.start_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
       const time = new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
+      const cancelBtn = r.status !== 'cancelled'
+        ? `<button class="btn-icon btn-icon--danger" data-cancel-all="${r.id}" style="font-size:.78rem;">✕ Annuler</button>`
+        : '';
       return `
         <div class="agenda-item" role="listitem">
           <span class="agenda-item__time">${date} ${time}</span>
@@ -145,9 +166,24 @@ async function loadAllRdv(dateFilter = '') {
             <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
             <p class="agenda-item__service">${r.service_name}</p>
           </div>
-          <span class="badge badge--${r.status}">${statusLabel}</span>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            <span class="badge badge--${r.status}">${statusLabel}</span>
+            ${cancelBtn}
+          </div>
         </div>`;
     }).join('');
+
+    list.querySelectorAll('[data-cancel-all]').forEach(btn =>
+      btn.addEventListener('click', async () => {
+        if (!confirm('Annuler ce rendez-vous ?')) return;
+        try {
+          await apiRequest(`/appointments/${btn.dataset.cancelAll}`, { method: 'DELETE' });
+          showToast('Rendez-vous annulé.');
+          loadAllRdv(document.getElementById('clientsDateFilter').value);
+          loadMetrics();
+        } catch (err) { showToast(err.message); }
+      })
+    );
   } catch (err) {
     list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
   }

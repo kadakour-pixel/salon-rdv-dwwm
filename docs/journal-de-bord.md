@@ -92,3 +92,7 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - Validation des entrées backend : `duration_minutes` (entier positif), `price` (nombre positif) dans `service.controller.js`, format `YYYY-MM-DD` pour `blocked_date` dans `availability.controller.js`.
 - Détection des réponses 401 dans `apiRequest()` : si le token JWT est expiré ou invalide, le localStorage est vidé et l'utilisateur est redirigé vers la page de connexion.
 - Illustration SVG animée dans la section hero de la page d'accueil (keyframes CSS : flottement, scintillement, mouvement des ciseaux).
+- Bouton "✕ Annuler" ajouté dans l'agenda et dans "Tous les RDV" du dashboard admin (confirmation avant annulation, mise à jour des métriques).
+- Responsive dashboard : onglets en retour à la ligne sur mobile (flex-wrap), métriques adaptées petit écran.
+- Taille de police globale augmentée (16px → 17px) pour une meilleure lisibilité.
+- Plan de tests mis à jour : 34/34 tests passés (T28–T34 couvrant US21, US22, US23, validation, sécurité).

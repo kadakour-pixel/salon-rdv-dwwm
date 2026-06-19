@@ -114,3 +114,20 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - `reserver.js` : même correction pour la date du calendrier de réservation.
 
 **Résultat :** 38/38 tests passés (T35–T38 ajoutés).
+
+---
+
+## Entrée 7 — Déploiement en production sur alwaysdata
+**Date :** 19 juin 2026
+
+**Déploiement**
+- Mise en ligne du frontend et du backend sur l'hébergeur alwaysdata (`kadakour.alwaysdata.net`).
+- Mise à jour des fichiers frontend et backend sur le serveur distant.
+
+**Correction de l'URL API**
+- Remplacement de `http://localhost:3000` par `https://kadakour.alwaysdata.net` dans `app.js` pour que les appels API fonctionnent en production.
+
+**Ajout des routes profil**
+- Restructuration de `auth.routes.js` : import des fonctions `getMe` et `updateMe` depuis le controller, déclaration des routes `GET /api/auth/me` et `PUT /api/auth/me` avec vérification du token.
+
+**Résultat :** Repo GitHub synchronisé, application fonctionnelle en production.

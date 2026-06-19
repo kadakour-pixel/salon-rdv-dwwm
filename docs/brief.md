@@ -35,9 +35,10 @@
 | Dashboard admin — liste globale des RDV avec filtre date | ✅ Livré |
 | Métriques dashboard (RDV jour, semaine, services actifs, annulations) | ✅ Livré |
 | Interface responsive mobile-first | ✅ Livré |
-| API gestion des horaires d'ouverture (backend) | ✅ Livré (API uniquement) |
-| API blocage de dates exceptionnelles (backend) | ✅ Livré (API uniquement) |
-| UI admin — gestion des horaires et jours de fermeture | ⏳ À faire |
+| Gestion des horaires d'ouverture (API + UI admin) | ✅ Livré |
+| Blocage de dates exceptionnelles (API + UI admin) | ✅ Livré |
+| Profil client — modification des informations | ✅ Livré |
+| Déploiement en production (alwaysdata) | ✅ Livré |
 
 ---
 
@@ -49,6 +50,7 @@
 | `pages/login.html` | Connexion + inscription | Public |
 | `pages/reserver.html` | Parcours de réservation (3 étapes) | Client connecté |
 | `pages/mes-rdv.html` | Liste et gestion de ses rendez-vous | Client connecté |
+| `pages/profil.html` | Modification du profil client | Client connecté |
 | `pages/dashboard.html` | Tableau de bord administrateur | Admin uniquement |
 
 ---
@@ -59,6 +61,8 @@
 |---------|-------|-------|
 | POST | `/api/auth/register` | Public |
 | POST | `/api/auth/login` | Public |
+| GET | `/api/auth/me` | Client |
+| PUT | `/api/auth/me` | Client |
 | GET | `/api/services` | Public |
 | POST/PUT/DELETE | `/api/services/:id` | Admin |
 | GET | `/api/availabilities` | Public |

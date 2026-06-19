@@ -16,10 +16,12 @@ Salon Élégance permet aux clients de réserver un rendez-vous en ligne 24h/24,
 - Catalogue des prestations (nom, durée, prix)
 - Réservation en 3 étapes : prestation → créneau → confirmation
 - Consultation et annulation des rendez-vous depuis l'espace client
+- Modification du profil (prénom, nom, email)
 
 **Côté administrateur**
 - Agenda du jour navigable (vue par date)
 - Gestion complète des prestations (CRUD)
+- Gestion des horaires d'ouverture et fermetures exceptionnelles
 - Vue globale de tous les rendez-vous avec filtre par date
 - Métriques en temps réel (RDV du jour, de la semaine, annulations)
 
@@ -53,7 +55,7 @@ salon-rdv/
 │       ├── middlewares/
 │       │   └── auth.middleware.js       # JWT + contrôle des rôles
 │       ├── controllers/
-│       │   ├── auth.controller.js       # Inscription / connexion
+│       │   ├── auth.controller.js       # Inscription / connexion / profil
 │       │   ├── service.controller.js    # CRUD prestations
 │       │   ├── appointment.controller.js # Créneaux + RDV
 │       │   └── availability.controller.js # Horaires
@@ -79,11 +81,13 @@ salon-rdv/
     │   ├── login.js                     # Logique connexion / inscription
     │   ├── reserver.js                  # Logique réservation (stepper + calendrier)
     │   ├── mes-rdv.js                   # Logique espace client
+    │   ├── profil.js                    # Logique page profil client
     │   └── dashboard.js                # Logique dashboard admin
     └── pages/
         ├── login.html                   # Connexion / inscription
         ├── reserver.html               # Réservation en 3 étapes
         ├── mes-rdv.html                # Mes rendez-vous
+        ├── profil.html                 # Profil client
         └── dashboard.html              # Dashboard administrateur
 ```
 
@@ -171,6 +175,8 @@ Base URL : `http://localhost:3000/api`
 |---------|-------|-------|-------------|
 | POST | `/auth/register` | Public | Créer un compte client |
 | POST | `/auth/login` | Public | Connexion → retourne un JWT |
+| GET | `/auth/me` | Client | Récupérer son profil |
+| PUT | `/auth/me` | Client | Modifier son profil |
 
 ### Prestations
 
@@ -196,8 +202,10 @@ Base URL : `http://localhost:3000/api`
 | Méthode | Route | Accès | Description |
 |---------|-------|-------|-------------|
 | GET | `/availabilities` | Public | Horaires d'ouverture |
-| PUT | `/availabilities` | Admin | Mettre à jour les horaires |
+| GET | `/availabilities/day?date=` | Public | Horaires d'un jour précis |
+| PUT | `/availabilities/:dayOfWeek` | Admin | Modifier les horaires d'un jour |
 | POST | `/availabilities/block` | Admin | Bloquer une date |
+| DELETE | `/availabilities/block/:date` | Admin | Débloquer une date |
 
 ### Format du token JWT
 

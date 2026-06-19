@@ -1,7 +1,7 @@
 # User Stories — Salon Élégance
 
-**Version :** 1.2  
-**Date :** 17 juin 2026  
+**Version :** 1.3  
+**Date :** 19 juin 2026  
 **Projet :** DWWM — Application de prise de rendez-vous
 
 ---

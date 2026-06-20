@@ -1,7 +1,7 @@
 # Todo — Salon Élégance
 
 **Dernière mise à jour :** 19 juin 2026  
-**État du MVP :** 38/38 tests passés — 23/23 user stories implémentées — toutes les tâches P1 et P2 terminées — déployé en production sur alwaysdata
+**État du MVP :** 44/44 tests passés — 23/23 user stories implémentées — toutes les tâches P1 et P2 terminées — déployé en production sur alwaysdata
 
 ---
 
@@ -40,6 +40,20 @@
 ### [x] Vérification de l'expiration JWT côté frontend
 - Détecter les réponses 401 dans `apiRequest()` (app.js) et rediriger vers login
 - Actuellement, un token expiré laisse l'utilisateur sur la page avec un état cassé
+
+### [x] Déploiement en production
+- Hébergement sur alwaysdata (`https://kadakour.alwaysdata.net`)
+- Site Node.js configuré avec répertoire `/home/kadakour/backend`
+- Fichiers synchronisés via FTP, URL API corrigée
+- 44/44 tests passés en production (T39–T44)
+
+---
+
+## Priorité 3 — Évolutions futures
+
+### [ ] Plage de dates pour congés
+- Permettre à l'admin de bloquer une plage de dates (du/au) au lieu de bloquer jour par jour
+- Utile pour les vacances ou fermetures longues
 
 ---
 

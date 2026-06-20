@@ -1,9 +1,9 @@
 # Plan de tests — Salon Élégance
 ## Projet DWWM — Application de prise de rendez-vous
 
-**Version :** 3.0  
-**Date :** 18 juin 2026  
-**Résultat global : 38/38 tests passés ✅**
+**Version :** 4.0  
+**Date :** 19 juin 2026  
+**Résultat global : 44/44 tests passés ✅**
 
 ---
 
@@ -108,7 +108,20 @@
 
 ---
 
-## 9. Bugs détectés et corrigés
+## 9. Déploiement en production (T39–T44)
+
+| ID | Description | Environnement | Résultat attendu | Résultat obtenu |
+|----|-------------|---------------|------------------|-----------------|
+| T39 | Inscription et connexion client en production | https://kadakour.alwaysdata.net | Compte créé, JWT retourné, redirection | ✅ PASS |
+| T40 | Réservation en 3 étapes en production | https://kadakour.alwaysdata.net | RDV enregistré, redirection mes-rdv | ✅ PASS |
+| T41 | Mes RDV + annulation en production | https://kadakour.alwaysdata.net | Liste affichée, annulation fonctionnelle | ✅ PASS |
+| T42 | Dashboard admin en production | https://kadakour.alwaysdata.net | Agenda, métriques, prestations, tous les RDV | ✅ PASS |
+| T43 | Horaires et fermetures exceptionnelles en production | https://kadakour.alwaysdata.net | Modification horaires, blocage/déblocage date | ✅ PASS |
+| T44 | Profil client en production | https://kadakour.alwaysdata.net | Affichage et modification du profil | ✅ PASS |
+
+---
+
+## 10. Bugs détectés et corrigés
 
 | Bug | Description | Correction apportée |
 |-----|-------------|---------------------|
@@ -126,7 +139,7 @@
 
 ---
 
-## 10. Résumé
+## 11. Résumé
 
 | Catégorie | Tests | Passés | Échoués |
 |-----------|-------|--------|---------|
@@ -138,6 +151,7 @@
 | Profil client | 1 | 1 | 0 |
 | Validation et sécurité | 3 | 3 | 0 |
 | Revue de code et corrections | 4 | 4 | 0 |
-| **Total** | **38** | **38** | **0** |
+| Déploiement en production | 6 | 6 | 0 |
+| **Total** | **44** | **44** | **0** |
 
-> **Taux de réussite : 100%** — Application validée et prête pour la soustenance.
+> **Taux de réussite : 100%** — Application validée, déployée et prête pour la soutenance.

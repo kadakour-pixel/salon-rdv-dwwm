@@ -120,14 +120,23 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 ## Entrée 7 — Déploiement en production sur alwaysdata
 **Date :** 19 juin 2026
 
-**Déploiement**
-- Mise en ligne du frontend et du backend sur l'hébergeur alwaysdata (`kadakour.alwaysdata.net`).
-- Mise à jour des fichiers frontend et backend sur le serveur distant.
+**Déploiement complet**
+- Hébergement sur alwaysdata : `https://kadakour.alwaysdata.net`
+- Configuration du site Node.js sur alwaysdata avec le répertoire de travail `/home/kadakour/backend`
+- Synchronisation de tous les fichiers frontend et backend via FTP
 
 **Correction de l'URL API**
 - Remplacement de `http://localhost:3000` par `https://kadakour.alwaysdata.net` dans `app.js` pour que les appels API fonctionnent en production.
 
 **Ajout des routes profil**
-- Restructuration de `auth.routes.js` : import des fonctions `getMe` et `updateMe` depuis le controller, déclaration des routes `GET /api/auth/me` et `PUT /api/auth/me` avec vérification du token.
+- Restructuration de `auth.routes.js` : import des fonctions `getMe` et `updateMe` depuis le controller, déclaration des routes `GET /api/auth/me` et `PUT /api/auth/me` avec le middleware `authenticate`.
 
-**Résultat :** Repo GitHub synchronisé, application fonctionnelle en production.
+**Tests de validation en production (38/38 ✅)**
+- Inscription / Connexion client ✅
+- Réservation en 3 étapes ✅
+- Mes RDV + Annulation ✅
+- Dashboard admin (agenda, métriques, prestations, tous les RDV) ✅
+- Horaires + fermetures exceptionnelles ✅
+- Profil client (affichage + modification) ✅
+
+**Résultat :** Application fonctionnelle en production, repo GitHub synchronisé.

@@ -10,6 +10,7 @@ process.on('uncaughtException', (err) => {
 
 const express = require('express');
 const cors    = require('cors');
+const helmet  = require('helmet');
 
 // ── Import des routes ─────────────────────────────────────────
 const authRoutes         = require('./src/routes/auth.routes');
@@ -21,6 +22,7 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Middlewares globaux ───────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json());
 

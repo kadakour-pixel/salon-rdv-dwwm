@@ -6,7 +6,10 @@ const db = require('../config/db');
 async function getAll(req, res) {
   try {
     const [rows] = await db.execute(
-      'SELECT id, day_of_week, open_time, close_time, is_blocked, blocked_date FROM availabilities ORDER BY day_of_week ASC, blocked_date ASC'
+      `SELECT id, day_of_week, open_time, close_time, is_blocked, blocked_date
+       FROM availabilities
+       WHERE blocked_date IS NULL OR blocked_date >= CURDATE()
+       ORDER BY day_of_week ASC, blocked_date ASC`
     );
     res.json(rows);
   } catch (err) {

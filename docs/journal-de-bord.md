@@ -153,3 +153,7 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 
 **Correction responsive**
 - Suppression de `display: none` sur `.hero__visual` en mobile (`home.css`) : l'illustration SVG animée est désormais visible sur tous les écrans.
+
+**Correction bug dates bloquées**
+- Les dates bloquées passées persistaient dans le dashboard admin après expiration.
+- Ajout d'un filtre SQL `WHERE blocked_date IS NULL OR blocked_date >= CURDATE()` dans `availability.controller.js` : seules les dates futures ou du jour sont désormais affichées.

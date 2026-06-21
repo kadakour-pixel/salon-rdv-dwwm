@@ -136,6 +136,7 @@
 | T35 | Désactivation prestation sans try/catch → crash silencieux | Ajout de try/catch dans `dashboard.js` |
 | T36 | Admin redirigé vers login au lieu de dashboard sur profil.html | Séparation des conditions dans `profil.js` |
 | T37-T38 | `toISOString()` renvoie date UTC, décalage possible la nuit | Remplacement par date locale dans `dashboard.js` et `reserver.js` |
+| Dates bloquées | Dates passées persistaient dans l'onglet Horaires du dashboard | Filtre SQL `blocked_date >= CURDATE()` dans `availability.controller.js` |
 
 ---
 

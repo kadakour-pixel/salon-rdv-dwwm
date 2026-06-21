@@ -140,3 +140,16 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 - Profil client (affichage + modification) ✅
 
 **Résultat :** Application fonctionnelle en production, repo GitHub synchronisé.
+
+---
+
+## Entrée 8 — Sécurisation et corrections responsive
+**Date :** 21 juin 2026
+
+**Sécurisation des en-têtes HTTP**
+- Installation de `helmet` dans le backend (`npm install helmet`).
+- Activation dans `server.js` avec CSP désactivé pour ne pas bloquer Google Fonts.
+- En-têtes ajoutés : X-Content-Type-Options, X-Frame-Options, Strict-Transport-Security, etc.
+
+**Correction responsive**
+- Suppression de `display: none` sur `.hero__visual` en mobile (`home.css`) : l'illustration SVG animée est désormais visible sur tous les écrans.

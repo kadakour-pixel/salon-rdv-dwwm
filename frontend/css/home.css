@@ -253,7 +253,6 @@
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 900px) {
   .hero__inner { grid-template-columns: 1fr; gap: 3rem; }
-  .hero__visual { display: none; }
   .hero { padding: 4rem 0 3rem; }
   .hero::before { display: none; }
   .steps { grid-template-columns: 1fr; gap: 2.5rem; }

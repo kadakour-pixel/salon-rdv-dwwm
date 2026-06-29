@@ -32,7 +32,6 @@ document.querySelectorAll('.dash-nav a').forEach(a =>
 // ── Métriques ─────────────────────────────────────────────
 async function loadMetrics() {
   try {
-    // Date locale (pas UTC) pour éviter un décalage entre minuit et 2h du matin
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const [allRdv, services] = await Promise.all([
@@ -41,7 +40,6 @@ async function loadMetrics() {
     ]);
     const todayRdv = allRdv.filter(r => r.start_at.startsWith(todayStr));
 
-    // Calcul du lundi de la semaine courante pour filtrer les RDV de la semaine
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1);
     weekStart.setHours(0, 0, 0, 0);
@@ -265,7 +263,6 @@ document.getElementById('serviceModalClose').addEventListener('click', () =>
   document.getElementById('serviceModal').classList.add('hidden')
 );
 
-
 // ── Horaires d'ouverture ──────────────────────────────────
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
@@ -283,7 +280,6 @@ async function loadAvailabilities() {
       const dateStr = typeof b.blocked_date === 'string'
         ? b.blocked_date.slice(0, 10)
         : b.blocked_date.toISOString().slice(0, 10);
-      // T12:00:00 évite le décalage UTC qui ferait changer le jour affiché
       const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
       });
@@ -322,9 +318,13 @@ async function loadAvailabilities() {
       <div style="margin-top:2rem;">
         <h3 style="font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1rem;">Fermetures exceptionnelles</h3>
         <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
-          <input type="date" id="blockDateInput"
+          <label style="font-size:.85rem;font-weight:500;">Du</label>
+          <input type="date" id="blockDateStart"
             style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
-          <button class="btn btn-accent" id="btnBlockDate" style="padding:.4rem 1rem;font-size:.85rem;">Bloquer ce jour</button>
+          <label style="font-size:.85rem;font-weight:500;">Au</label>
+          <input type="date" id="blockDateEnd"
+            style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
+          <button class="btn btn-accent" id="btnBlockDate" style="padding:.4rem 1rem;font-size:.85rem;">Bloquer la période</button>
         </div>
         ${blocked.length === 0
           ? '<p style="color:var(--text-muted);font-size:.9rem;">Aucune fermeture exceptionnelle planifiée.</p>'
@@ -351,16 +351,30 @@ async function loadAvailabilities() {
     );
 
     document.getElementById('btnBlockDate').addEventListener('click', async () => {
-      const dateVal = document.getElementById('blockDateInput').value;
-      if (!dateVal) { showToast('Sélectionne une date.'); return; }
+      const dateStart = document.getElementById('blockDateStart').value;
+      const dateEnd   = document.getElementById('blockDateEnd').value;
+      if (!dateStart) { showToast('Sélectionne une date de début.', 'error'); return; }
+      const end = dateEnd || dateStart;
+      if (end < dateStart) { showToast('La date de fin doit être après la date de début.', 'error'); return; }
+
+      const dates = [];
+      const cur = new Date(dateStart + 'T12:00:00');
+      const fin = new Date(end + 'T12:00:00');
+      while (cur <= fin) {
+        dates.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+      }
+
       try {
-        await apiRequest('/availabilities/block', {
-          method: 'POST',
-          body: JSON.stringify({ blocked_date: dateVal }),
-        });
-        showToast('Jour bloqué.');
+        await Promise.all(dates.map(d =>
+          apiRequest('/availabilities/block', {
+            method: 'POST',
+            body: JSON.stringify({ blocked_date: d }),
+          })
+        ));
+        showToast(`${dates.length} jour(s) bloqué(s).`);
         loadAvailabilities();
-      } catch (err) { showToast(err.message); }
+      } catch (err) { showToast(err.message, 'error'); }
     });
 
     container.querySelectorAll('[data-unblock]').forEach(btn =>

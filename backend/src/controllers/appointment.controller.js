@@ -196,4 +196,4 @@ async function cancel(req, res) {
   }
 }
 
-module.exports = { getAvailableSlots, create, getMine, getAll, cancel };
+module.exports = { getAvailableSlots, create, getMine, getAll, cancel, generateSlots };

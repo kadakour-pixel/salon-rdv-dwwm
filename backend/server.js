@@ -44,11 +44,14 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'Erreur interne du serveur' });
 });
 
-// ── Démarrage du serveur ──────────────────────────────────────
-console.log('🔄 Tentative de démarrage sur le port', PORT);
+// ── Démarrage du serveur (pas lancé quand importé par les tests) ──
+if (require.main === module) {
+  console.log('🔄 Tentative de démarrage sur le port', PORT);
+  app.listen(PORT, () => {
+    console.log(`✅ Serveur démarré sur le port ${PORT}`);
+  }).on('error', (err) => {
+    console.error('❌ Erreur démarrage serveur :', err.message);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`✅ Serveur démarré sur le port ${PORT}`);
-}).on('error', (err) => {
-  console.error('❌ Erreur démarrage serveur :', err.message);
-});
+module.exports = app;

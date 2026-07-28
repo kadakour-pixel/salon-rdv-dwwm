@@ -1,6 +1,9 @@
 // src/controllers/availability.controller.js — Horaires d'ouverture + jours bloqués
 const db = require('../config/db');
 
+// Format HH:MM ou HH:MM:SS (l'input type="time" du front envoie HH:MM)
+const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
 // GET /api/availabilities — public
 // Retourne les horaires hebdomadaires et les dates bloquées
 async function getAll(req, res) {
@@ -61,6 +64,9 @@ async function updateDay(req, res) {
   }
   if (!open_time || !close_time) {
     return res.status(400).json({ error: 'Champs open_time et close_time requis' });
+  }
+  if (!TIME_REGEX.test(open_time) || !TIME_REGEX.test(close_time)) {
+    return res.status(400).json({ error: 'Format d\'horaire invalide (attendu : HH:MM)' });
   }
 
   try {

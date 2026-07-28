@@ -46,11 +46,12 @@ async function register(req, res) {
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpires = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+    const verificationSentAt = new Date();
 
     const [result] = await db.execute(
-      `INSERT INTO users (email, password_hash, first_name, last_name, verification_token, token_expires)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [email, password_hash, first_name, last_name, verificationToken, tokenExpires]
+      `INSERT INTO users (email, password_hash, first_name, last_name, verification_token, token_expires, verification_sent_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [email, password_hash, first_name, last_name, verificationToken, tokenExpires, verificationSentAt]
     );
 
     // L'échec d'envoi du mail ne doit pas empêcher l'inscription : l'utilisateur
@@ -195,30 +196,26 @@ async function resendVerification(req, res) {
 
   try {
     const [[user]] = await db.execute(
-      'SELECT id, email_verified, token_expires FROM users WHERE email = ?',
+      'SELECT id, email_verified, verification_sent_at FROM users WHERE email = ?',
       [email]
     );
     if (!user || user.email_verified) {
       return genericResponse();
     }
 
-    // Pas de colonne dédiée pour la date du dernier envoi : on la déduit de token_expires,
-    // qui vaut toujours (date d'envoi + VERIFICATION_TOKEN_TTL_MS). C'est valable ici
-    // uniquement parce que token_expires est réécrit à chaque (re)génération de token
-    // avec cette même durée fixe — si la durée de validité changeait, il faudrait
-    // stocker la date d'envoi séparément plutôt que la recalculer par soustraction.
-    if (user.token_expires) {
-      const lastSentAt = user.token_expires.getTime() - VERIFICATION_TOKEN_TTL_MS;
-      if (Date.now() - lastSentAt < RESEND_COOLDOWN_MS) {
+    if (user.verification_sent_at) {
+      const elapsedSinceLastSend = Date.now() - user.verification_sent_at.getTime();
+      if (elapsedSinceLastSend < RESEND_COOLDOWN_MS) {
         return res.status(429).json({ error: 'Merci de patienter avant de redemander un email de vérification' });
       }
     }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpires = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+    const verificationSentAt = new Date();
     await db.execute(
-      'UPDATE users SET verification_token = ?, token_expires = ? WHERE id = ?',
-      [verificationToken, tokenExpires, user.id]
+      'UPDATE users SET verification_token = ?, token_expires = ?, verification_sent_at = ? WHERE id = ?',
+      [verificationToken, tokenExpires, verificationSentAt, user.id]
     );
 
     try {

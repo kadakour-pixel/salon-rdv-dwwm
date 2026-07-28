@@ -33,6 +33,7 @@ CREATE TABLE users (
   email_verified     TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = adresse email confirmée via le lien reçu par mail',
   verification_token VARCHAR(64) NULL,
   token_expires      DATETIME NULL COMMENT 'Expiration du verification_token (24h après génération)',
+  verification_sent_at DATETIME NULL COMMENT 'Date du dernier envoi du mail de vérification (register ou resend)',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

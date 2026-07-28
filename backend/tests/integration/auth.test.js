@@ -185,10 +185,25 @@ describe('GET /api/auth/verify', () => {
 describe('POST /api/auth/resend-verification', () => {
 
   // ── Cas 1 : renvoi accepté ───────────────────────────────────────
-  it('renvoie un mail si le compte existe et n\'est pas encore vérifié', async () => {
+  it('renvoie un mail si le compte existe, n\'est pas encore vérifié et le dernier envoi date de plus de 5 min', async () => {
     await db.execute(
-      'UPDATE users SET email_verified = 0, verification_token = ?, token_expires = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE email = ?',
+      'UPDATE users SET email_verified = 0, verification_token = ?, token_expires = DATE_ADD(NOW(), INTERVAL 1 DAY), verification_sent_at = DATE_SUB(NOW(), INTERVAL 1 DAY) WHERE email = ?',
       ['d'.repeat(64), TEST_USER.email]
+    );
+
+    const res = await request(app)
+      .post('/api/auth/resend-verification')
+      .send({ email: TEST_USER.email });
+
+    expect(res.status).toBe(200);
+    expect(mailer.sendVerificationEmail).toHaveBeenCalledTimes(1);
+  });
+
+  // ── Cas 1bis : jamais encore envoyé (verification_sent_at NULL) → accepté ─
+  it('renvoie un mail si aucun envoi précédent n\'est enregistré (verification_sent_at NULL)', async () => {
+    await db.execute(
+      'UPDATE users SET email_verified = 0, verification_token = ?, token_expires = DATE_ADD(NOW(), INTERVAL 1 DAY), verification_sent_at = NULL WHERE email = ?',
+      ['f'.repeat(64), TEST_USER.email]
     );
 
     const res = await request(app)
@@ -201,15 +216,34 @@ describe('POST /api/auth/resend-verification', () => {
 
   // ── Cas 2 : limitation à un renvoi par 5 minutes ─────────────────
   it('retourne 429 si un renvoi a déjà eu lieu il y a moins de 5 minutes', async () => {
-    // token_expires = maintenant + 24h → dernier envoi = maintenant → dans la fenêtre de 5 min
     await db.execute(
-      'UPDATE users SET email_verified = 0, verification_token = ?, token_expires = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE email = ?',
+      'UPDATE users SET email_verified = 0, verification_token = ?, token_expires = DATE_ADD(NOW(), INTERVAL 1 DAY), verification_sent_at = NOW() WHERE email = ?',
       ['e'.repeat(64), TEST_USER.email]
     );
 
     const res = await request(app)
       .post('/api/auth/resend-verification')
       .send({ email: TEST_USER.email });
+
+    expect(res.status).toBe(429);
+    expect(mailer.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  // ── Cas 2bis : le mail envoyé à l'inscription compte comme le premier envoi ─
+  it('retourne 429 si on redemande un renvoi juste après l\'inscription', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        email:      'juste-inscrit@salon.fr',
+        password:   'password123',
+        first_name: 'Juste',
+        last_name:  'Inscrit',
+      });
+    mailer.sendVerificationEmail.mockClear();
+
+    const res = await request(app)
+      .post('/api/auth/resend-verification')
+      .send({ email: 'juste-inscrit@salon.fr' });
 
     expect(res.status).toBe(429);
     expect(mailer.sendVerificationEmail).not.toHaveBeenCalled();

@@ -22,6 +22,7 @@ CREATE TABLE users (
   email_verified     TINYINT(1) NOT NULL DEFAULT 0,
   verification_token VARCHAR(64) NULL,
   token_expires      DATETIME NULL,
+  verification_sent_at DATETIME NULL,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

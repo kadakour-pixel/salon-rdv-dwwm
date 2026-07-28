@@ -53,6 +53,7 @@ CREATE TABLE appointments (
   start_at   DATETIME NOT NULL,
   end_at     DATETIME NOT NULL,
   status     ENUM('pending','confirmed','cancelled') NOT NULL DEFAULT 'confirmed',
+  reminder_sent TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,

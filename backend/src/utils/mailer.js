@@ -27,4 +27,18 @@ async function sendVerificationEmail(to, token) {
   });
 }
 
-module.exports = { sendVerificationEmail };
+// Envoie le mail de rappel 24h avant un RDV confirmé
+async function sendReminderEmail(to, { firstName, serviceName, startAtFr }) {
+  await transporter.sendMail({
+    from:    process.env.SMTP_USER,
+    to,
+    subject: 'Rappel de votre rendez-vous — Salon Élégance',
+    html: `
+      <p>Bonjour ${firstName},</p>
+      <p>Nous vous rappelons votre rendez-vous pour <strong>${serviceName}</strong> le <strong>${startAtFr}</strong>.</p>
+      <p>À bientôt !</p>
+    `,
+  });
+}
+
+module.exports = { sendVerificationEmail, sendReminderEmail };

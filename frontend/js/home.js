@@ -30,15 +30,7 @@ async function loadServices() {
     const services = await apiRequest('/services');
     const displayed = services.slice(0, 6); // max 6 sur l'accueil
 
-    grid.innerHTML = displayed.map(s => `
-      <article class="service-card" data-id="${s.id}" role="button" tabindex="0"
-               aria-label="${s.name} — ${s.price}€">
-        <div class="service-card__icon" aria-hidden="true">${getIcon(s.name)}</div>
-        <h3 class="service-card__name">${s.name}</h3>
-        <p class="service-card__duration">⏱ ${s.duration_minutes} min</p>
-        <p class="service-card__price">${parseFloat(s.price).toFixed(2)} €</p>
-      </article>
-    `).join('');
+    grid.replaceChildren(...displayed.map(renderServiceCard));
 
     // Clic sur une carte → aller réserver
     grid.querySelectorAll('.service-card').forEach(card => {
@@ -56,6 +48,36 @@ async function loadServices() {
     </p>`;
     console.error(err);
   }
+}
+
+// Construit une carte prestation en évitant toute injection HTML (nom venant de l'API)
+function renderServiceCard(s) {
+  const article = document.createElement('article');
+  article.className = 'service-card';
+  article.dataset.id = s.id;
+  article.setAttribute('role', 'button');
+  article.setAttribute('tabindex', '0');
+  article.setAttribute('aria-label', `${s.name} — ${s.price}€`);
+
+  const icon = document.createElement('div');
+  icon.className = 'service-card__icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = getIcon(s.name);
+
+  const name = document.createElement('h3');
+  name.className = 'service-card__name';
+  name.textContent = s.name;
+
+  const duration = document.createElement('p');
+  duration.className = 'service-card__duration';
+  duration.textContent = `⏱ ${s.duration_minutes} min`;
+
+  const price = document.createElement('p');
+  price.className = 'service-card__price';
+  price.textContent = `${parseFloat(s.price).toFixed(2)} €`;
+
+  article.append(icon, name, duration, price);
+  return article;
 }
 
 // ── Compteur animé ────────────────────────────────────────

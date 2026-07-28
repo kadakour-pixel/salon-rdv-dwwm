@@ -40,16 +40,7 @@ async function loadServices() {
   const grid = document.getElementById('servicePickGrid');
   try {
     const services = await apiRequest('/services');
-    grid.innerHTML = services.map(s => `
-      <div class="service-pick-card" data-id="${s.id}" data-name="${s.name}"
-           data-duration="${s.duration_minutes}" data-price="${s.price}"
-           role="radio" aria-checked="false" tabindex="0">
-        <div class="service-pick-card__icon">${getIcon(s.name)}</div>
-        <p class="service-pick-card__name">${s.name}</p>
-        <p class="service-pick-card__meta">⏱ ${s.duration_minutes} min</p>
-        <p class="service-pick-card__price">${parseFloat(s.price).toFixed(2)} €</p>
-      </div>
-    `).join('');
+    grid.replaceChildren(...services.map(renderServicePickCard));
 
     grid.querySelectorAll('.service-pick-card').forEach(card => {
       const select = () => {
@@ -80,6 +71,38 @@ async function loadServices() {
   } catch (err) {
     grid.innerHTML = `<p style="color:var(--error)">Erreur de chargement. Vérifiez que le serveur est démarré.</p>`;
   }
+}
+
+// Construit une carte de sélection de prestation en évitant toute injection HTML (nom venant de l'API)
+function renderServicePickCard(s) {
+  const card = document.createElement('div');
+  card.className = 'service-pick-card';
+  card.dataset.id = s.id;
+  card.dataset.name = s.name;
+  card.dataset.duration = s.duration_minutes;
+  card.dataset.price = s.price;
+  card.setAttribute('role', 'radio');
+  card.setAttribute('aria-checked', 'false');
+  card.setAttribute('tabindex', '0');
+
+  const icon = document.createElement('div');
+  icon.className = 'service-pick-card__icon';
+  icon.textContent = getIcon(s.name);
+
+  const name = document.createElement('p');
+  name.className = 'service-pick-card__name';
+  name.textContent = s.name;
+
+  const meta = document.createElement('p');
+  meta.className = 'service-pick-card__meta';
+  meta.textContent = `⏱ ${s.duration_minutes} min`;
+
+  const price = document.createElement('p');
+  price.className = 'service-pick-card__price';
+  price.textContent = `${parseFloat(s.price).toFixed(2)} €`;
+
+  card.append(icon, name, meta, price);
+  return card;
 }
 
 document.addEventListener('DOMContentLoaded', loadServices);
@@ -162,10 +185,14 @@ async function selectDate(dateStr, el) {
       slotsGrid.innerHTML = '<p style="color:var(--text-muted);font-size:.88rem;margin-top:.5rem;">Aucun créneau disponible ce jour.</p>';
       return;
     }
-    slotsGrid.innerHTML = slots.map(s => {
-      const time = s.start.slice(11, 16);
-      return `<button class="slot-btn" data-slot='${JSON.stringify(s)}' role="listitem">${time}</button>`;
-    }).join('');
+    slotsGrid.replaceChildren(...slots.map(s => {
+      const btn = document.createElement('button');
+      btn.className = 'slot-btn';
+      btn.dataset.slot = JSON.stringify(s);
+      btn.setAttribute('role', 'listitem');
+      btn.textContent = s.start.slice(11, 16);
+      return btn;
+    }));
 
     slotsGrid.querySelectorAll('.slot-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -176,7 +203,10 @@ async function selectDate(dateStr, el) {
       });
     });
   } catch (err) {
-    slotsGrid.innerHTML = `<p style="color:var(--error);font-size:.88rem;">${err.message}</p>`;
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--error);font-size:.88rem;';
+    p.textContent = err.message;
+    slotsGrid.replaceChildren(p);
   }
 }
 
@@ -202,13 +232,25 @@ function buildRecap() {
   });
   const timeLabel = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-  document.getElementById('recapContent').innerHTML = `
-    <div class="recap-row"><span>Prestation</span><span>${state.service.name}</span></div>
-    <div class="recap-row"><span>Durée</span><span>${state.service.duration} min</span></div>
-    <div class="recap-row"><span>Date</span><span>${dateLabel}</span></div>
-    <div class="recap-row"><span>Heure</span><span>${timeLabel}</span></div>
-    <div class="recap-row"><span>Tarif</span><span>${parseFloat(state.service.price).toFixed(2)} €</span></div>
-  `;
+  document.getElementById('recapContent').replaceChildren(
+    renderRecapRow('Prestation', state.service.name),
+    renderRecapRow('Durée', `${state.service.duration} min`),
+    renderRecapRow('Date', dateLabel),
+    renderRecapRow('Heure', timeLabel),
+    renderRecapRow('Tarif', `${parseFloat(state.service.price).toFixed(2)} €`),
+  );
+}
+
+// Construit une ligne du récapitulatif en évitant toute injection HTML (nom de prestation venant de l'API)
+function renderRecapRow(label, value) {
+  const row = document.createElement('div');
+  row.className = 'recap-row';
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = label;
+  const valueSpan = document.createElement('span');
+  valueSpan.textContent = value;
+  row.append(labelSpan, valueSpan);
+  return row;
 }
 
 document.getElementById('btnStep3Back').addEventListener('click', () => goStep(2));

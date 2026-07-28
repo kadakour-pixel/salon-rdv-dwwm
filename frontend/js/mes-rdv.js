@@ -20,7 +20,10 @@ async function loadRdv() {
     allRdv = await apiRequest('/appointments/me');
     renderList();
   } catch (err) {
-    list.innerHTML = `<p style="color:var(--error);padding:2rem 0;">${err.message}</p>`;
+    const p = document.createElement('p');
+    p.style.cssText = 'color:var(--error);padding:2rem 0;';
+    p.textContent = err.message;
+    list.replaceChildren(p);
   } finally {
     list.setAttribute('aria-busy', 'false');
   }
@@ -45,32 +48,7 @@ function renderList() {
     return;
   }
 
-  list.innerHTML = filtered.map(rdv => {
-    const start  = new Date(rdv.start_at);
-    const day    = start.getDate();
-    const month  = MONTHS[start.getMonth()];
-    const time   = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-    // Annulation possible si le RDV est aujourd'hui ou dans le futur (pas encore passé de plus d'un jour)
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const isFuture = start >= today && rdv.status !== 'cancelled';
-    const statusLabel = rdv.status === 'cancelled' ? 'Annulé' : rdv.status === 'confirmed' ? 'Confirmé' : 'En attente';
-
-    return `
-      <div class="rdv-card ${rdv.status === 'cancelled' ? 'rdv-card--cancelled' : ''}" role="listitem">
-        <div class="rdv-card__date" aria-hidden="true">
-          <div class="rdv-card__date-day">${day}</div>
-          <div class="rdv-card__date-month">${month}</div>
-        </div>
-        <div class="rdv-card__info">
-          <p class="rdv-card__service">${rdv.service_name}</p>
-          <p class="rdv-card__meta">${time} · ${rdv.price} €</p>
-        </div>
-        <div class="rdv-card__actions">
-          <span class="badge badge--${rdv.status}">${statusLabel}</span>
-          ${isFuture ? `<button class="btn-cancel" data-id="${rdv.id}" data-name="${rdv.service_name}" data-time="${time}" aria-label="Annuler ce rendez-vous">Annuler</button>` : ''}
-        </div>
-      </div>`;
-  }).join('');
+  list.replaceChildren(...filtered.map(renderRdvCard));
 
   // Boutons annulation
   list.querySelectorAll('.btn-cancel').forEach(btn => {
@@ -82,6 +60,64 @@ function renderList() {
       document.getElementById('cancelModal').classList.remove('hidden');
     });
   });
+}
+
+// Construit une carte RDV en évitant toute injection HTML (service_name venant de l'API)
+function renderRdvCard(rdv) {
+  const start  = new Date(rdv.start_at);
+  const day    = start.getDate();
+  const month  = MONTHS[start.getMonth()];
+  const time   = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  // Annulation possible si le RDV est aujourd'hui ou dans le futur (pas encore passé de plus d'un jour)
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const isFuture = start >= today && rdv.status !== 'cancelled';
+  const statusLabel = rdv.status === 'cancelled' ? 'Annulé' : rdv.status === 'confirmed' ? 'Confirmé' : 'En attente';
+
+  const card = document.createElement('div');
+  card.className = `rdv-card ${rdv.status === 'cancelled' ? 'rdv-card--cancelled' : ''}`;
+  card.setAttribute('role', 'listitem');
+
+  const dateDiv = document.createElement('div');
+  dateDiv.className = 'rdv-card__date';
+  dateDiv.setAttribute('aria-hidden', 'true');
+  const dayDiv = document.createElement('div');
+  dayDiv.className = 'rdv-card__date-day';
+  dayDiv.textContent = day;
+  const monthDiv = document.createElement('div');
+  monthDiv.className = 'rdv-card__date-month';
+  monthDiv.textContent = month;
+  dateDiv.append(dayDiv, monthDiv);
+
+  const infoDiv = document.createElement('div');
+  infoDiv.className = 'rdv-card__info';
+  const serviceP = document.createElement('p');
+  serviceP.className = 'rdv-card__service';
+  serviceP.textContent = rdv.service_name;
+  const metaP = document.createElement('p');
+  metaP.className = 'rdv-card__meta';
+  metaP.textContent = `${time} · ${rdv.price} €`;
+  infoDiv.append(serviceP, metaP);
+
+  const actionsDiv = document.createElement('div');
+  actionsDiv.className = 'rdv-card__actions';
+  const badge = document.createElement('span');
+  badge.className = `badge badge--${rdv.status}`;
+  badge.textContent = statusLabel;
+  actionsDiv.appendChild(badge);
+
+  if (isFuture) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-cancel';
+    cancelBtn.dataset.id = rdv.id;
+    cancelBtn.dataset.name = rdv.service_name;
+    cancelBtn.dataset.time = time;
+    cancelBtn.setAttribute('aria-label', 'Annuler ce rendez-vous');
+    cancelBtn.textContent = 'Annuler';
+    actionsDiv.appendChild(cancelBtn);
+  }
+
+  card.append(dateDiv, infoDiv, actionsDiv);
+  return card;
 }
 
 // ── Filtres ───────────────────────────────────────────────

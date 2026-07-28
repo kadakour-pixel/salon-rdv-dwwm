@@ -88,26 +88,11 @@ async function loadAgenda() {
       return;
     }
 
-    list.innerHTML = rdvs.map(r => {
-      const time = new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      const end  = new Date(r.end_at).toLocaleTimeString('fr-FR',   { hour: '2-digit', minute: '2-digit' });
-      const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
-      const cancelBtn = r.status !== 'cancelled'
-        ? `<button class="btn-icon btn-icon--danger" data-cancel-rdv="${r.id}" style="font-size:.78rem;">✕ Annuler</button>`
-        : '';
-      return `
-        <div class="agenda-item" role="listitem">
-          <span class="agenda-item__time">${time} – ${end}</span>
-          <div>
-            <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
-            <p class="agenda-item__service">${r.service_name} · ${r.duration_minutes} min</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:.5rem;">
-            <span class="badge badge--${r.status}">${statusLabel}</span>
-            ${cancelBtn}
-          </div>
-        </div>`;
-    }).join('');
+    list.replaceChildren(...rdvs.map(r => renderAgendaItem(r, {
+      timeLabel:    `${new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} – ${new Date(r.end_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+      serviceLabel: `${r.service_name} · ${r.duration_minutes} min`,
+      cancelAttr:   'data-cancel-rdv',
+    })));
 
     list.querySelectorAll('[data-cancel-rdv]').forEach(btn =>
       btn.addEventListener('click', async () => {
@@ -121,8 +106,57 @@ async function loadAgenda() {
       })
     );
   } catch (err) {
-    list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+    list.replaceChildren(renderErrorParagraph(err.message, '1rem 0'));
   }
+}
+
+// Construit une ligne d'agenda (agenda du jour ou liste "tous les RDV") en évitant toute injection HTML
+function renderAgendaItem(r, { timeLabel, serviceLabel, cancelAttr }) {
+  const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
+
+  const item = document.createElement('div');
+  item.className = 'agenda-item';
+  item.setAttribute('role', 'listitem');
+
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'agenda-item__time';
+  timeSpan.textContent = timeLabel;
+
+  const info = document.createElement('div');
+  const clientP = document.createElement('p');
+  clientP.className = 'agenda-item__client';
+  clientP.textContent = `${r.first_name} ${r.last_name}`;
+  const serviceP = document.createElement('p');
+  serviceP.className = 'agenda-item__service';
+  serviceP.textContent = serviceLabel;
+  info.append(clientP, serviceP);
+
+  const right = document.createElement('div');
+  right.style.cssText = 'display:flex;align-items:center;gap:.5rem;';
+  const badge = document.createElement('span');
+  badge.className = `badge badge--${r.status}`;
+  badge.textContent = statusLabel;
+  right.appendChild(badge);
+
+  if (r.status !== 'cancelled') {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-icon btn-icon--danger';
+    cancelBtn.style.fontSize = '.78rem';
+    cancelBtn.textContent = '✕ Annuler';
+    cancelBtn.setAttribute(cancelAttr, r.id);
+    right.appendChild(cancelBtn);
+  }
+
+  item.append(timeSpan, info, right);
+  return item;
+}
+
+// Paragraphe d'erreur générique (le message provient de l'API, jamais injecté en HTML brut)
+function renderErrorParagraph(message, padding) {
+  const p = document.createElement('p');
+  p.style.cssText = `color:var(--error);padding:${padding};`;
+  p.textContent = message;
+  return p;
 }
 
 document.getElementById('agendaPrev').addEventListener('click', () => {
@@ -153,26 +187,11 @@ async function loadAllRdv(dateFilter = '') {
       return;
     }
 
-    list.innerHTML = rdvs.map(r => {
-      const date = new Date(r.start_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-      const time = new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
-      const cancelBtn = r.status !== 'cancelled'
-        ? `<button class="btn-icon btn-icon--danger" data-cancel-all="${r.id}" style="font-size:.78rem;">✕ Annuler</button>`
-        : '';
-      return `
-        <div class="agenda-item" role="listitem">
-          <span class="agenda-item__time">${date} ${time}</span>
-          <div>
-            <p class="agenda-item__client">${r.first_name} ${r.last_name}</p>
-            <p class="agenda-item__service">${r.service_name}</p>
-          </div>
-          <div style="display:flex;align-items:center;gap:.5rem;">
-            <span class="badge badge--${r.status}">${statusLabel}</span>
-            ${cancelBtn}
-          </div>
-        </div>`;
-    }).join('');
+    list.replaceChildren(...rdvs.map(r => renderAgendaItem(r, {
+      timeLabel:    `${new Date(r.start_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} ${new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
+      serviceLabel: r.service_name,
+      cancelAttr:   'data-cancel-all',
+    })));
 
     list.querySelectorAll('[data-cancel-all]').forEach(btn =>
       btn.addEventListener('click', async () => {
@@ -186,7 +205,7 @@ async function loadAllRdv(dateFilter = '') {
       })
     );
   } catch (err) {
-    list.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+    list.replaceChildren(renderErrorParagraph(err.message, '1rem 0'));
   }
 }
 
@@ -208,18 +227,7 @@ async function loadServices() {
       return;
     }
 
-    tbody.innerHTML = services.map(s => `
-      <tr>
-        <td><strong>${s.name}</strong></td>
-        <td>${s.duration_minutes} min</td>
-        <td>${parseFloat(s.price).toFixed(2)} €</td>
-        <td><span class="badge badge--confirmed">Active</span></td>
-        <td>
-          <button class="btn-icon" data-edit="${s.id}" data-name="${s.name}"
-                  data-duration="${s.duration_minutes}" data-price="${s.price}">✏️ Modifier</button>
-          <button class="btn-icon btn-icon--danger" data-delete="${s.id}" style="margin-left:.5rem;">🗑 Désactiver</button>
-        </td>
-      </tr>`).join('');
+    tbody.replaceChildren(...services.map(renderServiceRow));
 
     tbody.querySelectorAll('[data-edit]').forEach(btn => {
       btn.addEventListener('click', () => openServiceModal({
@@ -243,8 +251,60 @@ async function loadServices() {
       });
     });
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--error);">${err.message}</td></tr>`;
+    tbody.replaceChildren(renderErrorRow(err.message, 5));
   }
+}
+
+// Construit une ligne <tr> de la table des prestations en évitant toute injection HTML
+function renderServiceRow(s) {
+  const tr = document.createElement('tr');
+
+  const nameTd = document.createElement('td');
+  const strong = document.createElement('strong');
+  strong.textContent = s.name;
+  nameTd.appendChild(strong);
+
+  const durationTd = document.createElement('td');
+  durationTd.textContent = `${s.duration_minutes} min`;
+
+  const priceTd = document.createElement('td');
+  priceTd.textContent = `${parseFloat(s.price).toFixed(2)} €`;
+
+  const statusTd = document.createElement('td');
+  const badge = document.createElement('span');
+  badge.className = 'badge badge--confirmed';
+  badge.textContent = 'Active';
+  statusTd.appendChild(badge);
+
+  const actionsTd = document.createElement('td');
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn-icon';
+  editBtn.textContent = '✏️ Modifier';
+  editBtn.dataset.edit = s.id;
+  editBtn.dataset.name = s.name;
+  editBtn.dataset.duration = s.duration_minutes;
+  editBtn.dataset.price = s.price;
+
+  const deleteBtn = document.createElement('button');
+  deleteBtn.className = 'btn-icon btn-icon--danger';
+  deleteBtn.style.marginLeft = '.5rem';
+  deleteBtn.textContent = '🗑 Désactiver';
+  deleteBtn.dataset.delete = s.id;
+
+  actionsTd.append(editBtn, deleteBtn);
+  tr.append(nameTd, durationTd, priceTd, statusTd, actionsTd);
+  return tr;
+}
+
+// Ligne d'erreur générique pour un tableau (colspan variable)
+function renderErrorRow(message, colspan) {
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = colspan;
+  td.style.color = 'var(--error)';
+  td.textContent = message;
+  tr.appendChild(td);
+  return tr;
 }
 
 // ── Modal prestation ──────────────────────────────────────
@@ -276,61 +336,55 @@ async function loadAvailabilities() {
     const byDay   = {};
     weekly.forEach(r => { byDay[r.day_of_week] = r; });
 
-    const blockedItems = blocked.map(b => {
-      const dateStr = typeof b.blocked_date === 'string'
-        ? b.blocked_date.slice(0, 10)
-        : b.blocked_date.toISOString().slice(0, 10);
-      const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-      });
-      return `<li style="display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:var(--surface-2);border-radius:var(--radius-md);border:1.5px solid var(--border);">
-        <span>🔒 ${label}</span>
-        <button class="btn-icon btn-icon--danger" data-unblock="${dateStr}">✕ Débloquer</button>
-      </li>`;
-    }).join('');
+    container.innerHTML = '';
 
-    container.innerHTML = `
-      <div class="card" style="padding:0;overflow:hidden;">
-        <table class="service-table">
-          <thead><tr><th>Jour</th><th>Ouverture</th><th>Fermeture</th><th></th></tr></thead>
-          <tbody>
-            ${[1, 2, 3, 4, 5, 6, 0].map(day => {
-              const h  = byDay[day];
-              const op = h ? h.open_time.slice(0, 5) : null;
-              const cl = h ? h.close_time.slice(0, 5) : null;
-              return `<tr>
-                <td><strong>${DAY_NAMES[day]}</strong></td>
-                <td>${op !== null ? op : '<span style="color:var(--text-muted)">—</span>'}</td>
-                <td>${cl !== null ? cl : '<span style="color:var(--text-muted)">—</span>'}</td>
-                <td>
-                  ${h
-                    ? `<button class="btn-icon" data-edit-day="${day}" data-open="${op}" data-close="${cl}">✏️ Modifier</button>
-                       <button class="btn-icon btn-icon--danger" data-close-day="${day}" style="margin-left:.5rem;">✕ Fermer</button>`
-                    : `<button class="btn-icon" data-edit-day="${day}" data-open="" data-close="">+ Ouvrir</button>`
-                  }
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.cssText = 'padding:0;overflow:hidden;';
 
-      <div style="margin-top:2rem;">
-        <h3 style="font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1rem;">Fermetures exceptionnelles</h3>
-        <div style="display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;">
-          <label style="font-size:.85rem;font-weight:500;">Du</label>
-          <input type="date" id="blockDateStart"
-            style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
-          <label style="font-size:.85rem;font-weight:500;">Au</label>
-          <input type="date" id="blockDateEnd"
-            style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
-          <button class="btn btn-accent" id="btnBlockDate" style="padding:.4rem 1rem;font-size:.85rem;">Bloquer la période</button>
-        </div>
-        ${blocked.length === 0
-          ? '<p style="color:var(--text-muted);font-size:.9rem;">Aucune fermeture exceptionnelle planifiée.</p>'
-          : `<ul style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem;">${blockedItems}</ul>`
-        }
-      </div>`;
+    const table = document.createElement('table');
+    table.className = 'service-table';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>Jour</th><th>Ouverture</th><th>Fermeture</th><th></th></tr>';
+    const tbody = document.createElement('tbody');
+    [1, 2, 3, 4, 5, 6, 0].forEach(day => tbody.appendChild(renderAvailabilityRow(day, byDay)));
+    table.append(thead, tbody);
+    card.appendChild(table);
+
+    const section = document.createElement('div');
+    section.style.marginTop = '2rem';
+
+    const h3 = document.createElement('h3');
+    h3.style.cssText = 'font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1rem;';
+    h3.textContent = 'Fermetures exceptionnelles';
+
+    const formRow = document.createElement('div');
+    formRow.style.cssText = 'display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;flex-wrap:wrap;';
+    formRow.innerHTML = `
+      <label style="font-size:.85rem;font-weight:500;">Du</label>
+      <input type="date" id="blockDateStart"
+        style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
+      <label style="font-size:.85rem;font-weight:500;">Au</label>
+      <input type="date" id="blockDateEnd"
+        style="padding:.4rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-md);font-size:.85rem;" />
+      <button class="btn btn-accent" id="btnBlockDate" style="padding:.4rem 1rem;font-size:.85rem;">Bloquer la période</button>
+    `;
+
+    section.append(h3, formRow);
+
+    if (blocked.length === 0) {
+      const p = document.createElement('p');
+      p.style.cssText = 'color:var(--text-muted);font-size:.9rem;';
+      p.textContent = 'Aucune fermeture exceptionnelle planifiée.';
+      section.appendChild(p);
+    } else {
+      const ul = document.createElement('ul');
+      ul.style.cssText = 'list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:.5rem;';
+      blocked.forEach(b => ul.appendChild(renderBlockedItem(b)));
+      section.appendChild(ul);
+    }
+
+    container.append(card, section);
 
     container.querySelectorAll('[data-edit-day]').forEach(btn =>
       btn.addEventListener('click', () =>
@@ -389,8 +443,88 @@ async function loadAvailabilities() {
       })
     );
   } catch (err) {
-    container.innerHTML = `<p style="color:var(--error);padding:1rem 0;">${err.message}</p>`;
+    container.replaceChildren(renderErrorParagraph(err.message, '1rem 0'));
   }
+}
+
+// Construit une ligne <tr> du tableau des horaires hebdomadaires
+function renderAvailabilityRow(day, byDay) {
+  const h  = byDay[day];
+  const op = h ? h.open_time.slice(0, 5) : null;
+  const cl = h ? h.close_time.slice(0, 5) : null;
+
+  const tr = document.createElement('tr');
+
+  const dayTd = document.createElement('td');
+  const strong = document.createElement('strong');
+  strong.textContent = DAY_NAMES[day];
+  dayTd.appendChild(strong);
+
+  const renderTimeTd = time => {
+    const td = document.createElement('td');
+    if (time !== null) {
+      td.textContent = time;
+    } else {
+      const span = document.createElement('span');
+      span.style.color = 'var(--text-muted)';
+      span.textContent = '—';
+      td.appendChild(span);
+    }
+    return td;
+  };
+
+  const actionsTd = document.createElement('td');
+  if (h) {
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn-icon';
+    editBtn.textContent = '✏️ Modifier';
+    editBtn.dataset.editDay = day;
+    editBtn.dataset.open = op;
+    editBtn.dataset.close = cl;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'btn-icon btn-icon--danger';
+    closeBtn.style.marginLeft = '.5rem';
+    closeBtn.textContent = '✕ Fermer';
+    closeBtn.dataset.closeDay = day;
+
+    actionsTd.append(editBtn, closeBtn);
+  } else {
+    const openBtn = document.createElement('button');
+    openBtn.className = 'btn-icon';
+    openBtn.textContent = '+ Ouvrir';
+    openBtn.dataset.editDay = day;
+    openBtn.dataset.open = '';
+    openBtn.dataset.close = '';
+    actionsTd.appendChild(openBtn);
+  }
+
+  tr.append(dayTd, renderTimeTd(op), renderTimeTd(cl), actionsTd);
+  return tr;
+}
+
+// Construit une ligne <li> de la liste des fermetures exceptionnelles
+function renderBlockedItem(b) {
+  const dateStr = typeof b.blocked_date === 'string'
+    ? b.blocked_date.slice(0, 10)
+    : b.blocked_date.toISOString().slice(0, 10);
+  const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
+  const li = document.createElement('li');
+  li.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:var(--surface-2);border-radius:var(--radius-md);border:1.5px solid var(--border);';
+
+  const span = document.createElement('span');
+  span.textContent = `🔒 ${label}`;
+
+  const btn = document.createElement('button');
+  btn.className = 'btn-icon btn-icon--danger';
+  btn.textContent = '✕ Débloquer';
+  btn.dataset.unblock = dateStr;
+
+  li.append(span, btn);
+  return li;
 }
 
 function openHorairesModal(day, openTime, closeTime) {

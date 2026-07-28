@@ -19,6 +19,9 @@ CREATE TABLE users (
   first_name    VARCHAR(100) NOT NULL,
   last_name     VARCHAR(100) NOT NULL,
   role          ENUM('client', 'admin') NOT NULL DEFAULT 'client',
+  email_verified     TINYINT(1) NOT NULL DEFAULT 0,
+  verification_token VARCHAR(64) NULL,
+  token_expires      DATETIME NULL,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

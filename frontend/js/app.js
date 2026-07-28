@@ -35,7 +35,11 @@ async function apiRequest(path, options = {}) {
     throw new Error('Session expirée');
   }
 
-  if (!res.ok) throw new Error(data.error || `Erreur ${res.status}`);
+  if (!res.ok) {
+    const err = new Error(data.error || `Erreur ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
   return data;
 }
 

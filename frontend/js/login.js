@@ -18,6 +18,11 @@ if (window.location.hash === '#register') {
   document.getElementById('tab-register').click();
 }
 
+// Retour du clic sur le lien de vérification reçu par mail (voir GET /api/auth/verify)
+if (new URLSearchParams(window.location.search).get('verified') === '1') {
+  showToast('Adresse email vérifiée ! Vous pouvez vous connecter.', 'success');
+}
+
 // ── Helpers validation ────────────────────────────────────
 function showErr(id, show) {
   const el = document.getElementById(id);
@@ -33,9 +38,12 @@ function hideAlert(id) {
 }
 
 // ── Connexion ─────────────────────────────────────────────
+const resendBtn = document.getElementById('resendVerificationBtn');
+
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   hideAlert('loginAlert');
+  resendBtn.hidden = true;
 
   const email    = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
@@ -61,8 +69,28 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     }, 800);
   } catch (err) {
     showAlert('loginAlert', err.message || 'Identifiants incorrects.');
+    if (err.status === 403) {
+      resendBtn.hidden = false;
+      resendBtn.dataset.email = email;
+    }
     btn.disabled = false;
     btn.textContent = 'Se connecter';
+  }
+});
+
+// ── Renvoi de l'email de vérification (affiché après un login 403) ──
+resendBtn.addEventListener('click', async () => {
+  resendBtn.disabled = true;
+  try {
+    const data = await apiRequest('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email: resendBtn.dataset.email }),
+    });
+    showAlert('loginAlert', data.message, 'success');
+    resendBtn.hidden = true;
+  } catch (err) {
+    showAlert('loginAlert', err.message || "Erreur lors du renvoi de l'email.");
+    resendBtn.disabled = false;
   }
 });
 
@@ -92,9 +120,15 @@ document.getElementById('registerForm').addEventListener('submit', async e => {
       method: 'POST',
       body: JSON.stringify({ first_name, last_name, email, password }),
     });
-    Auth.save(data.token, 'client');
-    showAlert('registerAlert', 'Compte créé ! Redirection…', 'success');
-    setTimeout(() => { window.location.href = 'reserver.html'; }, 800);
+    // Pas de connexion automatique : le compte doit d'abord être vérifié par email
+    showAlert('registerAlert', data.message, 'success');
+    document.getElementById('registerForm').reset();
+    btn.disabled = false;
+    btn.textContent = 'Créer mon compte';
+    setTimeout(() => {
+      document.getElementById('tab-login').click();
+      document.getElementById('loginEmail').value = email;
+    }, 2000);
   } catch (err) {
     showAlert('registerAlert', err.message || 'Erreur lors de l\'inscription.');
     btn.disabled = false;

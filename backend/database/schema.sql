@@ -30,6 +30,9 @@ CREATE TABLE users (
   first_name    VARCHAR(100) NOT NULL,
   last_name     VARCHAR(100) NOT NULL,
   role          ENUM('client', 'admin') NOT NULL DEFAULT 'client',
+  email_verified     TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = adresse email confirmée via le lien reçu par mail',
+  verification_token VARCHAR(64) NULL,
+  token_expires      DATETIME NULL COMMENT 'Expiration du verification_token (24h après génération)',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -83,13 +86,15 @@ CREATE TABLE appointments (
 
 -- Compte admin par défaut
 -- Mot de passe : Admin1234! (à changer en production !)
-INSERT INTO users (email, password_hash, first_name, last_name, role)
+-- email_verified = 1 : compte de seed, pas de flux de vérification à passer
+INSERT INTO users (email, password_hash, first_name, last_name, role, email_verified)
 VALUES (
   'admin@salon.fr',
   '$2b$10$xJg1/JGeeDCcXORGeMq42uvv47/BYdB74N0V5r/aAjOpzO/MsorkK',
   'Admin',
   'Salon',
-  'admin'
+  'admin',
+  1
 );
 
 -- Horaires d'ouverture par défaut (Mardi–Samedi)

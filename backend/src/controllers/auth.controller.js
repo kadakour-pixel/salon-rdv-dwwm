@@ -1,7 +1,14 @@
 // src/controllers/auth.controller.js
 const bcrypt = require('bcrypt');
 const jwt    = require('jsonwebtoken');
+const crypto = require('crypto');
 const db     = require('../config/db');
+const mailer = require('../utils/mailer');
+
+// Durée de validité du token de vérification d'email
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+// Délai minimum entre deux renvois du mail de vérification
+const RESEND_COOLDOWN_MS = 5 * 60 * 1000; // 5 min
 
 // Coût du hashage bcrypt : 10 = bon compromis sécurité/performance (~100ms par hash)
 const SALT_ROUNDS = 10;
@@ -37,13 +44,28 @@ async function register(req, res) {
     }
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpires = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+
     const [result] = await db.execute(
-      'INSERT INTO users (email, password_hash, first_name, last_name) VALUES (?, ?, ?, ?)',
-      [email, password_hash, first_name, last_name]
+      `INSERT INTO users (email, password_hash, first_name, last_name, verification_token, token_expires)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [email, password_hash, first_name, last_name, verificationToken, tokenExpires]
     );
 
-    const token = signToken({ id: result.insertId, email, role: 'client' });
-    return res.status(201).json({ token });
+    // L'échec d'envoi du mail ne doit pas empêcher l'inscription : l'utilisateur
+    // pourra toujours redemander l'email via /api/auth/resend-verification
+    try {
+      await mailer.sendVerificationEmail(email, verificationToken);
+    } catch (mailErr) {
+      console.error('Échec envoi mail de vérification :', mailErr);
+    }
+
+    // Pas de JWT ici : le compte n'est pas encore vérifié, l'utilisateur doit
+    // d'abord cliquer sur le lien reçu par mail avant de pouvoir se connecter.
+    return res.status(201).json({
+      message: 'Compte créé. Vérifiez votre boîte mail pour activer votre compte avant de vous connecter.',
+    });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Erreur serveur' });
@@ -60,7 +82,7 @@ async function login(req, res) {
 
   try {
     const [rows] = await db.execute(
-      'SELECT id, email, password_hash, role FROM users WHERE email = ?', [email]
+      'SELECT id, email, password_hash, role, email_verified FROM users WHERE email = ?', [email]
     );
     // Même message vague pour email inconnu ET mauvais mot de passe → ne révèle pas si l'email existe (sécurité)
     if (rows.length === 0) {
@@ -71,6 +93,10 @@ async function login(req, res) {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) {
       return res.status(401).json({ error: 'Identifiants incorrects' });
+    }
+
+    if (!user.email_verified) {
+      return res.status(403).json({ error: 'Adresse email non vérifiée. Consultez votre boîte mail.' });
     }
 
     const token = signToken({ id: user.id, email: user.email, role: user.role });
@@ -128,6 +154,86 @@ async function updateMe(req, res) {
   }
 }
 
+// GET /api/auth/verify?token=... — clic sur le lien reçu par mail
+async function verifyEmail(req, res) {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).json({ error: 'Token manquant' });
+  }
+
+  try {
+    const [[user]] = await db.execute(
+      'SELECT id FROM users WHERE verification_token = ? AND token_expires > NOW()',
+      [token]
+    );
+    if (!user) {
+      return res.status(400).json({ error: 'Lien de vérification invalide ou expiré' });
+    }
+
+    await db.execute(
+      'UPDATE users SET email_verified = 1, verification_token = NULL, token_expires = NULL WHERE id = ?',
+      [user.id]
+    );
+
+    return res.redirect(`${process.env.APP_URL}/pages/login.html?verified=1`);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+// POST /api/auth/resend-verification — renvoie le mail (limité à 1 par 5 min)
+async function resendVerification(req, res) {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email requis' });
+  }
+
+  // Message générique : ne révèle pas si le compte existe ou est déjà vérifié
+  const genericResponse = () =>
+    res.json({ message: "Si un compte existe et n'est pas encore vérifié, un email vient d'être envoyé." });
+
+  try {
+    const [[user]] = await db.execute(
+      'SELECT id, email_verified, token_expires FROM users WHERE email = ?',
+      [email]
+    );
+    if (!user || user.email_verified) {
+      return genericResponse();
+    }
+
+    // Pas de colonne dédiée pour la date du dernier envoi : on la déduit de token_expires,
+    // qui vaut toujours (date d'envoi + VERIFICATION_TOKEN_TTL_MS). C'est valable ici
+    // uniquement parce que token_expires est réécrit à chaque (re)génération de token
+    // avec cette même durée fixe — si la durée de validité changeait, il faudrait
+    // stocker la date d'envoi séparément plutôt que la recalculer par soustraction.
+    if (user.token_expires) {
+      const lastSentAt = user.token_expires.getTime() - VERIFICATION_TOKEN_TTL_MS;
+      if (Date.now() - lastSentAt < RESEND_COOLDOWN_MS) {
+        return res.status(429).json({ error: 'Merci de patienter avant de redemander un email de vérification' });
+      }
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpires = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
+    await db.execute(
+      'UPDATE users SET verification_token = ?, token_expires = ? WHERE id = ?',
+      [verificationToken, tokenExpires, user.id]
+    );
+
+    try {
+      await mailer.sendVerificationEmail(email, verificationToken);
+    } catch (mailErr) {
+      console.error('Échec envoi mail de vérification :', mailErr);
+    }
+
+    return genericResponse();
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
 // Génération du token JWT
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -135,4 +241,4 @@ function signToken(payload) {
   });
 }
 
-module.exports = { register, login, getMe, updateMe };
+module.exports = { register, login, getMe, updateMe, verifyEmail, resendVerification };

@@ -11,9 +11,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Échappe les caractères spéciaux HTML pour éviter l'injection de balises
+// dans les templates de mail (pendant côté mail du fix XSS DOM en 2e6eff5).
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Envoie le mail de confirmation d'adresse à l'inscription (ou lors d'un renvoi)
 async function sendVerificationEmail(to, token) {
   const link = `${process.env.APP_URL}/api/auth/verify?token=${token}`;
+  const safeLink = escapeHtml(link);
   await transporter.sendMail({
     from:    process.env.SMTP_USER,
     to,
@@ -21,7 +33,7 @@ async function sendVerificationEmail(to, token) {
     html: `
       <p>Bonjour,</p>
       <p>Merci de votre inscription. Confirmez votre adresse email en cliquant sur le lien ci-dessous :</p>
-      <p><a href="${link}">${link}</a></p>
+      <p><a href="${safeLink}">${safeLink}</a></p>
       <p>Ce lien expire dans 24 heures.</p>
     `,
   });
@@ -34,8 +46,8 @@ async function sendReminderEmail(to, { firstName, serviceName, startAtFr }) {
     to,
     subject: 'Rappel de votre rendez-vous — Salon Élégance',
     html: `
-      <p>Bonjour ${firstName},</p>
-      <p>Nous vous rappelons votre rendez-vous pour <strong>${serviceName}</strong> le <strong>${startAtFr}</strong>.</p>
+      <p>Bonjour ${escapeHtml(firstName)},</p>
+      <p>Nous vous rappelons votre rendez-vous pour <strong>${escapeHtml(serviceName)}</strong> le <strong>${escapeHtml(startAtFr)}</strong>.</p>
       <p>À bientôt !</p>
     `,
   });

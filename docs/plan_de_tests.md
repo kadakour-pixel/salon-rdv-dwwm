@@ -1,9 +1,9 @@
 # Plan de tests — Salon Élégance
 ## Projet DWWM — Application de prise de rendez-vous
 
-**Version :** 4.0  
-**Date :** 19 juin 2026  
-**Résultat global : 44/44 tests passés ✅**
+**Version :** 5.0  
+**Date :** 1 juillet 2026  
+**Résultat global : 44 tests manuels + 12 tests automatisés ✅**
 
 ---
 
@@ -140,7 +140,36 @@
 
 ---
 
-## 11. Résumé
+## 11. Tests automatisés (Jest + Supertest)
+
+Outils : **Jest** (framework de test Node.js) + **Supertest** (simulation de requêtes HTTP).  
+Exécution : `npm test` depuis le dossier `backend/` — BDD isolée `salon_rdv_test`.
+
+### Tests unitaires — `generateSlots()`
+
+| ID | Description | Résultat |
+|----|-------------|----------|
+| U01 | 18 créneaux générés sur 9h–18h, pas 30 min, durée 30 min | ✅ PASS |
+| U02 | Créneau dont la fin coïncide exactement avec la fermeture : inclus | ✅ PASS |
+| U03 | Créneau dont la fin dépasse la fermeture : exclu | ✅ PASS |
+| U04 | Créneau occupé par un RDV existant : exclu | ✅ PASS |
+| U05 | Chevauchement partiel (RDV à cheval) : les deux créneaux exclus | ✅ PASS |
+
+### Tests d'intégration
+
+| ID | Description | Résultat |
+|----|-------------|----------|
+| I01 | POST /api/auth/login — succès : 200 + token + role | ✅ PASS |
+| I02 | POST /api/auth/login — mauvais MDP : 401 | ✅ PASS |
+| I03 | POST /api/auth/login — email inconnu : 401 (même message) | ✅ PASS |
+| I04 | POST /api/appointments — créneau libre : 201 + start_at/end_at corrects | ✅ PASS |
+| I05 | POST /api/appointments — créneau déjà pris : 409 | ✅ PASS |
+| I06 | POST /api/appointments sans token : 401 | ✅ PASS |
+| I07 | POST /api/services avec token client (route admin) : 403 | ✅ PASS |
+
+---
+
+## 12. Résumé
 
 | Catégorie | Tests | Passés | Échoués |
 |-----------|-------|--------|---------|
@@ -153,6 +182,9 @@
 | Validation et sécurité | 3 | 3 | 0 |
 | Revue de code et corrections | 4 | 4 | 0 |
 | Déploiement en production | 6 | 6 | 0 |
-| **Total** | **44** | **44** | **0** |
+| **Total manuel** | **44** | **44** | **0** |
+| Tests unitaires (Jest) | 5 | 5 | 0 |
+| Tests d'intégration (Supertest) | 7 | 7 | 0 |
+| **Total automatisé** | **12** | **12** | **0** |
 
-> **Taux de réussite : 100%** — Application validée, déployée et prête pour la soutenance.
+> **Taux de réussite : 100%** — 44 tests manuels + 12 tests automatisés. Application validée, déployée et prête pour la soutenance.

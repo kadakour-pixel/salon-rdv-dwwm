@@ -157,3 +157,37 @@ Restructuration des fichiers de documentation dans un dossier `docs/` dédié :
 **Correction bug dates bloquées**
 - Les dates bloquées passées persistaient dans le dashboard admin après expiration.
 - Ajout d'un filtre SQL `WHERE blocked_date IS NULL OR blocked_date >= CURDATE()` dans `availability.controller.js` : seules les dates futures ou du jour sont désormais affichées.
+
+---
+
+## Entrée 9 — Tests automatisés Jest + Supertest
+**Date :** 1 juillet 2026
+
+**Contexte**
+Ajout de tests automatisés en complément des 44 tests manuels existants, pour renforcer la fiabilité et démontrer une démarche qualité à la soutenance.
+
+**Installation et configuration**
+- Installation de `jest` et `supertest` en devDependencies.
+- Script `"test": "jest --runInBand --forceExit"` dans `package.json` (`--runInBand` : exécution sérielle pour éviter les conflits BDD, `--forceExit` : fermeture du pool MySQL en fin de tests).
+- Fichier `tests/setup.js` : charge `.env.test` avant chaque suite pour pointer vers la BDD de test.
+- Fichier `.env.test` : même credentials que `.env` mais `DB_NAME=salon_rdv_test` (ajouté au `.gitignore`).
+- Base de données `salon_rdv_test` créée via `tests/schema_test.sql` (même schéma que prod, sans seed).
+
+**Modifications du code existant**
+- `server.js` : `app.listen()` rendu conditionnel avec `require.main === module` + `module.exports = app` pour que Supertest puisse importer l'app sans démarrer un vrai serveur.
+- `appointment.controller.js` : `generateSlots` ajouté aux exports pour permettre les tests unitaires en isolation.
+
+**Tests unitaires — `generateSlots` (5 cas)**
+- Journée normale : 18 créneaux générés de 9h à 18h (pas de 30 min, durée 30 min)
+- Créneau à la limite exacte de fermeture : inclus
+- Créneau qui déborde après fermeture : exclu
+- Créneau déjà réservé (chevauchement exact) : exclu
+- Chevauchement partiel (RDV à cheval sur deux créneaux) : les deux créneaux exclus
+
+**Tests d'intégration — 7 cas**
+- `POST /api/auth/login` : succès (200 + token), mauvais MDP (401), email inconnu (401 même message)
+- `POST /api/appointments` : réservation réussie (201), conflit sur créneau pris (409)
+- Route protégée sans token : 401
+- Route admin avec token client : 403
+
+**Résultat : 12/12 tests automatisés passés ✅**

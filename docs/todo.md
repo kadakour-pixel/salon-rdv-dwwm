@@ -1,7 +1,7 @@
 # Todo — Salon Élégance
 
-**Dernière mise à jour :** 19 juin 2026  
-**État du MVP :** 44/44 tests passés — 23/23 user stories implémentées — toutes les tâches P1 et P2 terminées — déployé en production sur alwaysdata
+**Dernière mise à jour :** 1 juillet 2026  
+**État du MVP :** 44 tests manuels + 12 tests automatisés (Jest/Supertest) — 23/23 user stories — déployé sur alwaysdata
 
 ---
 

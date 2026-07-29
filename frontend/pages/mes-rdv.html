@@ -32,6 +32,12 @@
         <a href="reserver.html" class="btn btn-accent">+ Nouveau RDV</a>
       </div>
 
+      <!-- Avis à laisser -->
+      <div id="reviewableSection" class="reviewable-section hidden">
+        <h2 class="reviewable-section__title">Avis à laisser</h2>
+        <div id="reviewableList" class="reviewable-list"></div>
+      </div>
+
       <!-- Filtres -->
       <div class="rdv-filters" role="group" aria-label="Filtrer les rendez-vous">
         <button class="filter-btn active" data-filter="all">Tous</button>
@@ -58,7 +64,27 @@
     </div>
   </div>
 
-  
+  <!-- Modal dépôt d'avis -->
+  <div class="modal-overlay hidden" id="reviewModal" role="dialog" aria-modal="true" aria-labelledby="reviewModalTitle">
+    <div class="modal">
+      <h3 id="reviewModalTitle">Laisser un avis</h3>
+      <p>Partagez votre expérience pour ce rendez-vous.</p>
+      <div class="star-picker" id="starPicker" role="radiogroup" aria-label="Note de 1 à 5 étoiles">
+        <button type="button" class="star-btn" data-value="1" role="radio" aria-checked="false" aria-label="1 étoile">★</button>
+        <button type="button" class="star-btn" data-value="2" role="radio" aria-checked="false" aria-label="2 étoiles">★</button>
+        <button type="button" class="star-btn" data-value="3" role="radio" aria-checked="false" aria-label="3 étoiles">★</button>
+        <button type="button" class="star-btn" data-value="4" role="radio" aria-checked="false" aria-label="4 étoiles">★</button>
+        <button type="button" class="star-btn" data-value="5" role="radio" aria-checked="false" aria-label="5 étoiles">★</button>
+      </div>
+      <textarea id="reviewComment" class="review-textarea" maxlength="1000" rows="4" placeholder="Votre commentaire (1000 caractères max)"></textarea>
+      <div class="modal__actions">
+        <button class="btn btn-outline" id="reviewModalCancel">Annuler</button>
+        <button class="btn btn-primary" id="reviewModalConfirm">Envoyer</button>
+      </div>
+    </div>
+  </div>
+
+
   <script src="../js/app.js"></script>
   <script src="../js/mes-rdv.js"></script>
 </body>

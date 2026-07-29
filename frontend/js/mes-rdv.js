@@ -6,9 +6,14 @@ let allRdv = [];
 let currentFilter = 'all';
 let rdvToCancel   = null;
 
+let reviewableAppointments = [];
+let appointmentToReview    = null;
+let selectedRating         = 0;
+
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLogged()) { window.location.href = 'login.html'; return; }
   await loadRdv();
+  await loadReviewable();
 });
 
 // ── Chargement ────────────────────────────────────────────
@@ -157,5 +162,123 @@ document.getElementById('modalConfirm').addEventListener('click', async () => {
     btn.disabled = false;
     btn.textContent = 'Oui, annuler';
     rdvToCancel = null;
+  }
+});
+
+// ── Avis à laisser ────────────────────────────────────────
+async function loadReviewable() {
+  try {
+    reviewableAppointments = await apiRequest('/reviews/reviewable');
+    renderReviewable();
+  } catch (err) {
+    // Ne bloque pas l'affichage des RDV si cet appel échoue
+    console.error(err);
+  }
+}
+
+function renderReviewable() {
+  const section = document.getElementById('reviewableSection');
+  const list    = document.getElementById('reviewableList');
+
+  if (!reviewableAppointments.length) {
+    section.classList.add('hidden');
+    list.replaceChildren();
+    return;
+  }
+
+  section.classList.remove('hidden');
+  list.replaceChildren(...reviewableAppointments.map(renderReviewableItem));
+}
+
+// Construit une ligne "avis à laisser" en évitant toute injection HTML (service_name venant de l'API)
+function renderReviewableItem(appt) {
+  const start   = new Date(appt.start_at);
+  const dateStr = start.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const item = document.createElement('div');
+  item.className = 'reviewable-item';
+
+  const info = document.createElement('p');
+  info.className = 'reviewable-item__info';
+  info.textContent = `${appt.service_name} — ${dateStr}`;
+
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-outline';
+  btn.textContent = 'Laisser un avis';
+  btn.addEventListener('click', () => openReviewModal(appt.id));
+
+  item.append(info, btn);
+  return item;
+}
+
+function openReviewModal(appointmentId) {
+  appointmentToReview = appointmentId;
+  selectedRating = 0;
+  document.getElementById('reviewComment').value = '';
+  updateStarDisplay();
+  document.getElementById('reviewModal').classList.remove('hidden');
+}
+
+function updateStarDisplay() {
+  document.querySelectorAll('#starPicker .star-btn').forEach(btn => {
+    const active = Number(btn.dataset.value) <= selectedRating;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-checked', active ? 'true' : 'false');
+  });
+}
+
+document.querySelectorAll('#starPicker .star-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedRating = Number(btn.dataset.value);
+    updateStarDisplay();
+  });
+});
+
+function closeReviewModal() {
+  document.getElementById('reviewModal').classList.add('hidden');
+  appointmentToReview = null;
+}
+
+document.getElementById('reviewModalCancel').addEventListener('click', closeReviewModal);
+
+document.getElementById('reviewModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeReviewModal();
+});
+
+document.getElementById('reviewModalConfirm').addEventListener('click', async () => {
+  const comment = document.getElementById('reviewComment').value.trim();
+
+  // Validation front pour l'UX — le backend reste la vraie barrière
+  if (!selectedRating) {
+    showToast('Choisissez une note avant d\'envoyer.', 'error');
+    return;
+  }
+  if (!comment) {
+    showToast('Le commentaire ne peut pas être vide.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('reviewModalConfirm');
+  btn.disabled = true;
+  btn.textContent = 'Envoi…';
+  try {
+    await apiRequest('/reviews', {
+      method: 'POST',
+      body: JSON.stringify({
+        appointment_id: appointmentToReview,
+        rating: Number(selectedRating),
+        comment,
+      }),
+    });
+    document.getElementById('reviewModal').classList.add('hidden');
+    showToast('Merci pour votre avis !');
+    reviewableAppointments = reviewableAppointments.filter(a => a.id !== appointmentToReview);
+    renderReviewable();
+  } catch (err) {
+    showToast(err.message || 'Erreur lors de l\'envoi de l\'avis.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Envoyer';
+    appointmentToReview = null;
   }
 });

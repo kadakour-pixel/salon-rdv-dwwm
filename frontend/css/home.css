@@ -199,6 +199,46 @@
 }
 .services-cta { text-align: center; margin-top: 2.5rem; }
 
+/* ── Avis clients ─────────────────────────────────────────── */
+.reviews-section {
+  padding: 5rem 0;
+}
+.reviews-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+}
+.review-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+.review-card__stars {
+  color: var(--accent);
+  font-size: 1.1rem;
+  letter-spacing: .1em;
+  margin-bottom: .75rem;
+}
+.review-card__comment {
+  color: var(--text-main);
+  font-size: .92rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+.review-card__author {
+  font-size: .8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.reviews__loader, .reviews__error, .reviews__empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+  grid-column: 1 / -1;
+}
+.reviews__error { color: var(--error); }
+
 /* ── How it works ────────────────────────────────────────── */
 .howitworks {
   padding: 5rem 0;

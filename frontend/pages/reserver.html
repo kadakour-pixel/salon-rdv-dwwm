@@ -31,34 +31,64 @@
 
       <!-- Stepper (numérotation calculée dynamiquement en JS à partir des étapes visibles) -->
       <nav class="stepper" aria-label="Étapes de réservation">
-        <div class="stepper__step active" data-step="service">
+        <div class="stepper__step active" data-step="salon">
           <span class="stepper__num">1</span>
+          <span class="stepper__label">Salon</span>
+        </div>
+        <div class="stepper__step" data-step="stylist">
+          <span class="stepper__num">2</span>
+          <span class="stepper__label">Coiffeur</span>
+        </div>
+        <div class="stepper__step" data-step="service">
+          <span class="stepper__num">3</span>
           <span class="stepper__label">Prestation</span>
         </div>
         <div class="stepper__step" data-step="datetime">
-          <span class="stepper__num">2</span>
+          <span class="stepper__num">4</span>
           <span class="stepper__label">Créneau</span>
         </div>
         <div class="stepper__step" data-step="confirm">
-          <span class="stepper__num">3</span>
+          <span class="stepper__num">5</span>
           <span class="stepper__label">Confirmation</span>
         </div>
       </nav>
 
-      <!-- ── Étape salon (Lot 2) : masquée, sans contenu fonctionnel ── -->
-      <div class="booking-panel" id="panel-salon" data-step="salon"></div>
+      <!-- ── Étape salon (conditionnelle : masquée si un seul salon actif) ── -->
+      <div class="booking-panel active" id="panel-salon" data-step="salon">
+        <div class="card">
+          <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Dans quel salon souhaitez-vous être reçu(e) ?</h2>
+          <div class="service-pick-grid" id="salonPickGrid">
+            <div class="loader"><div class="spinner"></div> Chargement…</div>
+          </div>
+          <div style="margin-top:1.75rem;text-align:right;">
+            <button class="btn btn-accent" id="btnSalonNext" disabled>Continuer →</button>
+          </div>
+        </div>
+      </div>
 
-      <!-- ── Étape coiffeur (Lot 2) : masquée, sans contenu fonctionnel ── -->
-      <div class="booking-panel" id="panel-stylist" data-step="stylist"></div>
+      <!-- ── Étape coiffeur (conditionnelle : masquée si un seul coiffeur actif dans le salon) ── -->
+      <div class="booking-panel" id="panel-stylist" data-step="stylist">
+        <div class="card">
+          <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Quel coiffeur souhaitez-vous ?</h2>
+          <div class="service-pick-grid" id="stylistPickGrid">
+            <div class="loader"><div class="spinner"></div> Chargement…</div>
+          </div>
+          <div style="margin-top:1.75rem;display:flex;gap:1rem;justify-content:flex-end;">
+            <button class="btn btn-outline" id="btnStylistBack">← Retour</button>
+            <button class="btn btn-accent" id="btnStylistNext" disabled>Continuer →</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── Étape : Choisir une prestation ── -->
-      <div class="booking-panel active" id="panel-service" data-step="service">
+      <div class="booking-panel" id="panel-service" data-step="service">
         <div class="card">
           <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Quelle prestation souhaitez-vous ?</h2>
           <div class="service-pick-grid" id="servicePickGrid">
             <div class="loader"><div class="spinner"></div> Chargement…</div>
           </div>
-          <div style="margin-top:1.75rem;text-align:right;">
+          <div style="margin-top:1.75rem;display:flex;gap:1rem;justify-content:flex-end;">
+            <button class="btn btn-outline" id="btnStep1Back">← Retour</button>
             <button class="btn btn-accent" id="btnStep1Next" disabled>Continuer →</button>
           </div>
         </div>

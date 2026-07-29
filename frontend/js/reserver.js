@@ -1,4 +1,4 @@
-// js/reserver.js — Réservation en 3 étapes
+// js/reserver.js — Réservation en plusieurs étapes (salon/coiffeur conditionnels)
 
 // ── Vérifier connexion ────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,8 +29,8 @@ function resetFrom(stepName) {
 }
 
 // ── Navigation stepper ────────────────────────────────────
-// Étapes nommées : salon/stylist masquées ce lot (contenu au Lot 2), le
-// parcours visible reste service → datetime → confirm, numéroté 1/2/3.
+// Étapes nommées : salon/stylist masquées si un seul choix actif (auto-sélection
+// silencieuse), visibles sinon. service/datetime/confirm toujours visibles.
 const STEPS = [
   { name: 'salon',    label: 'Salon',        visible: false },
   { name: 'stylist',  label: 'Coiffeur',     visible: false },
@@ -39,8 +39,33 @@ const STEPS = [
   { name: 'confirm',  label: 'Confirmation', visible: true  },
 ];
 
+// Boutons "Retour" conditionnels : masqués quand l'étape n'a pas de précédente visible.
+const BACK_BUTTONS = {
+  stylist:  'btnStylistBack',
+  service:  'btnStep1Back',
+  datetime: 'btnStep2Back',
+  confirm:  'btnStep3Back',
+};
+
 function visibleSteps() {
   return STEPS.filter(s => s.visible);
+}
+
+function setStepVisible(name, visible) {
+  const step = STEPS.find(s => s.name === name);
+  if (step) step.visible = visible;
+}
+
+function prevStep(name) {
+  const vSteps = visibleSteps();
+  const idx = vSteps.findIndex(s => s.name === name);
+  return idx > 0 ? vSteps[idx - 1].name : null;
+}
+
+function nextStep(name) {
+  const vSteps = visibleSteps();
+  const idx = vSteps.findIndex(s => s.name === name);
+  return (idx !== -1 && idx < vSteps.length - 1) ? vSteps[idx + 1].name : null;
 }
 
 function goStep(stepName) {
@@ -54,16 +79,197 @@ function goStep(stepName) {
   document.querySelectorAll('.stepper__step').forEach(el => {
     const idx = vSteps.findIndex(s => s.name === el.dataset.step);
     el.classList.remove('active', 'done');
-    if (idx === -1) return;
+    if (idx === -1) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = '';
     el.querySelector('.stepper__num').textContent = idx + 1;
     if (idx === currentIndex) el.classList.add('active');
     if (idx < currentIndex)  el.classList.add('done');
   });
 
+  Object.entries(BACK_BUTTONS).forEach(([step, btnId]) => {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.style.display = prevStep(step) ? '' : 'none';
+  });
+
   if (stepName === 'datetime') renderCalendar();
 }
 
-// ── Étape 1 — Prestations ─────────────────────────────────
+// ── Sélection sur grille de cartes (salon / coiffeur / service) ──────────
+// Facteur commun aux 3 étapes à choix multiple : sélection visuelle + callback.
+function wireSelectableGrid(grid, onSelect) {
+  grid.querySelectorAll('.service-pick-card').forEach(card => {
+    const select = () => {
+      grid.querySelectorAll('.service-pick-card').forEach(c => {
+        c.classList.remove('selected');
+        c.setAttribute('aria-checked', 'false');
+      });
+      card.classList.add('selected');
+      card.setAttribute('aria-checked', 'true');
+      onSelect(card);
+    };
+    card.addEventListener('click', select);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') select(); });
+  });
+}
+
+// Affiche un message d'erreur dans une grille en évitant toute injection HTML
+// (le message peut provenir de l'API via err.message)
+function showGridError(grid, message) {
+  const p = document.createElement('p');
+  p.style.cssText = 'color:var(--error);font-size:.88rem;';
+  p.textContent = message;
+  grid.replaceChildren(p);
+}
+
+// ── Étape salon (conditionnelle) ──────────────────────────
+// Construit une carte de sélection de salon en évitant toute injection HTML (données venant de l'API)
+function renderSalonCard(s) {
+  const card = document.createElement('div');
+  card.className = 'service-pick-card';
+  card.dataset.id = s.id;
+  card.dataset.name = s.name;
+  card.setAttribute('role', 'radio');
+  card.setAttribute('aria-checked', 'false');
+  card.setAttribute('tabindex', '0');
+
+  const icon = document.createElement('div');
+  icon.className = 'service-pick-card__icon';
+  icon.textContent = '📍';
+
+  const name = document.createElement('p');
+  name.className = 'service-pick-card__name';
+  name.textContent = s.name;
+
+  const meta = document.createElement('p');
+  meta.className = 'service-pick-card__meta';
+  meta.textContent = s.address || '';
+
+  card.append(icon, name, meta);
+  return card;
+}
+
+// Résout le salon : auto-sélection silencieuse si un seul salon actif, sinon
+// affiche la grille de choix. Retourne true si résolu automatiquement (aucune
+// action utilisateur nécessaire), false si l'étape doit rester visible.
+async function resolveSalon() {
+  const grid = document.getElementById('salonPickGrid');
+  try {
+    const salons = await apiRequest('/salons');
+
+    if (!salons.length) {
+      setStepVisible('salon', true);
+      showGridError(grid, 'Aucun salon disponible pour le moment.');
+      return false;
+    }
+
+    if (salons.length === 1) {
+      state.salon = { id: salons[0].id, name: salons[0].name };
+      setStepVisible('salon', false);
+      return true;
+    }
+
+    setStepVisible('salon', true);
+    grid.replaceChildren(...salons.map(renderSalonCard));
+    wireSelectableGrid(grid, card => {
+      state.salon = { id: card.dataset.id, name: card.dataset.name };
+      resetFrom('salon');
+      const btn = document.getElementById('btnSalonNext');
+      btn.disabled = true;
+      afterSalonKnown().finally(() => { btn.disabled = false; });
+    });
+    return false;
+  } catch (err) {
+    setStepVisible('salon', true);
+    showGridError(grid, err.message);
+    return false;
+  }
+}
+
+// ── Étape coiffeur (conditionnelle) ───────────────────────
+// Construit une carte de sélection de coiffeur en évitant toute injection HTML (données venant de l'API)
+function renderStylistCard(s) {
+  const card = document.createElement('div');
+  card.className = 'service-pick-card';
+  const fullName = `${s.first_name} ${s.last_name}`;
+  card.dataset.id = s.id;
+  card.dataset.name = fullName;
+  card.setAttribute('role', 'radio');
+  card.setAttribute('aria-checked', 'false');
+  card.setAttribute('tabindex', '0');
+
+  const icon = document.createElement('div');
+  icon.className = 'service-pick-card__icon';
+  icon.textContent = '💇';
+
+  const name = document.createElement('p');
+  name.className = 'service-pick-card__name';
+  name.textContent = fullName;
+
+  card.append(icon, name);
+  return card;
+}
+
+// Résout le coiffeur pour le salon connu : même logique d'auto-sélection que resolveSalon.
+async function resolveStylists(salonId) {
+  const grid = document.getElementById('stylistPickGrid');
+  try {
+    const stylists = await apiRequest(`/salons/${salonId}/stylists`);
+
+    if (!stylists.length) {
+      setStepVisible('stylist', true);
+      showGridError(grid, 'Aucun coiffeur disponible pour ce salon.');
+      return false;
+    }
+
+    if (stylists.length === 1) {
+      const s = stylists[0];
+      state.stylist = { id: s.id, name: `${s.first_name} ${s.last_name}` };
+      setStepVisible('stylist', false);
+      grid.replaceChildren(); // vide un éventuel contenu d'un salon précédemment sélectionné
+      return true;
+    }
+
+    setStepVisible('stylist', true);
+    grid.replaceChildren(...stylists.map(renderStylistCard));
+    document.getElementById('btnStylistNext').disabled = true;
+    wireSelectableGrid(grid, card => {
+      state.stylist = { id: card.dataset.id, name: card.dataset.name };
+      resetFrom('stylist');
+      document.getElementById('btnStylistNext').disabled = false;
+    });
+    return false;
+  } catch (err) {
+    setStepVisible('stylist', true);
+    showGridError(grid, err.message);
+    return false;
+  }
+}
+
+// Une fois le salon connu (auto ou choisi) : résout le coiffeur et charge les
+// prestations du salon en parallèle (les prestations ne dépendent que du salon).
+async function afterSalonKnown() {
+  await Promise.all([resolveStylists(state.salon.id), loadServices()]);
+}
+
+// Point d'entrée : résout salon → coiffeur → prestations, puis affiche la
+// première étape restée visible. Avec un seul salon et un seul coiffeur
+// (seeds actuels), tout est auto-résolu et le parcours démarre directement à
+// "service", identique au parcours d'avant le Lot 2.
+async function initBooking() {
+  const salonAuto = await resolveSalon();
+  if (!salonAuto) { goStep('salon'); return; }
+
+  await afterSalonKnown();
+  const stylistVisible = STEPS.find(s => s.name === 'stylist').visible;
+  goStep(stylistVisible ? 'stylist' : 'service');
+}
+
+document.addEventListener('DOMContentLoaded', initBooking);
+
+// ── Étape service — Prestations ───────────────────────────
 function getIcon(name) {
   const n = name.toLowerCase();
   if (n.includes('color') || n.includes('teinture')) return '🎨';
@@ -77,27 +283,24 @@ function getIcon(name) {
 async function loadServices() {
   const grid = document.getElementById('servicePickGrid');
   try {
-    const services = await apiRequest('/services');
-    grid.replaceChildren(...services.map(renderServicePickCard));
+    const services = await apiRequest(`/services?salon_id=${state.salon.id}`);
 
-    grid.querySelectorAll('.service-pick-card').forEach(card => {
-      const select = () => {
-        grid.querySelectorAll('.service-pick-card').forEach(c => {
-          c.classList.remove('selected');
-          c.setAttribute('aria-checked', 'false');
-        });
-        card.classList.add('selected');
-        card.setAttribute('aria-checked', 'true');
-        state.service = {
-          id:       card.dataset.id,
-          name:     card.dataset.name,
-          duration: card.dataset.duration,
-          price:    card.dataset.price,
-        };
-        document.getElementById('btnStep1Next').disabled = false;
+    if (!services.length) {
+      showGridError(grid, 'Aucune prestation disponible dans ce salon pour le moment.');
+      return;
+    }
+
+    grid.replaceChildren(...services.map(renderServicePickCard));
+    document.getElementById('btnStep1Next').disabled = true;
+
+    wireSelectableGrid(grid, card => {
+      state.service = {
+        id:       card.dataset.id,
+        name:     card.dataset.name,
+        duration: card.dataset.duration,
+        price:    card.dataset.price,
       };
-      card.addEventListener('click', select);
-      card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') select(); });
+      document.getElementById('btnStep1Next').disabled = false;
     });
 
     // Pré-sélectionner si serviceId dans l'URL
@@ -143,10 +346,15 @@ function renderServicePickCard(s) {
   return card;
 }
 
-document.addEventListener('DOMContentLoaded', loadServices);
-document.getElementById('btnStep1Next').addEventListener('click', () => goStep('datetime'));
+document.getElementById('btnStep1Back').addEventListener('click', () => goStep(prevStep('service')));
+document.getElementById('btnStep1Next').addEventListener('click', () => goStep(nextStep('service')));
 
-// ── Étape 2 — Calendrier ──────────────────────────────────
+// ── Navigation salon / coiffeur ───────────────────────────
+document.getElementById('btnSalonNext').addEventListener('click', () => goStep(nextStep('salon')));
+document.getElementById('btnStylistBack').addEventListener('click', () => goStep(prevStep('stylist')));
+document.getElementById('btnStylistNext').addEventListener('click', () => goStep(nextStep('stylist')));
+
+// ── Étape datetime — Calendrier ───────────────────────────
 const DAY_NAMES   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 const MONTH_NAMES = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
@@ -218,7 +426,7 @@ async function selectDate(dateStr, el) {
   slotsGrid.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
 
   try {
-    const { slots } = await apiRequest(`/appointments/slots?date=${dateStr}&serviceId=${state.service.id}`);
+    const { slots } = await apiRequest(`/appointments/slots?date=${dateStr}&serviceId=${state.service.id}&stylist_id=${state.stylist.id}`);
     if (!slots.length) {
       slotsGrid.innerHTML = '<p style="color:var(--text-muted);font-size:.88rem;margin-top:.5rem;">Aucun créneau disponible ce jour.</p>';
       return;
@@ -259,10 +467,10 @@ document.getElementById('calNext').addEventListener('click', () => {
   renderCalendar();
 });
 
-document.getElementById('btnStep2Back').addEventListener('click', () => goStep('service'));
-document.getElementById('btnStep2Next').addEventListener('click', () => { buildRecap(); goStep('confirm'); });
+document.getElementById('btnStep2Back').addEventListener('click', () => goStep(prevStep('datetime')));
+document.getElementById('btnStep2Next').addEventListener('click', () => { buildRecap(); goStep(nextStep('datetime')); });
 
-// ── Étape 3 — Récapitulatif ───────────────────────────────
+// ── Étape confirm — Récapitulatif ─────────────────────────
 function buildRecap() {
   const startDate = new Date(state.slot.start);
   const dateLabel = startDate.toLocaleDateString('fr-FR', {
@@ -291,7 +499,7 @@ function renderRecapRow(label, value) {
   return row;
 }
 
-document.getElementById('btnStep3Back').addEventListener('click', () => goStep('datetime'));
+document.getElementById('btnStep3Back').addEventListener('click', () => goStep(prevStep('confirm')));
 
 document.getElementById('btnConfirm').addEventListener('click', async () => {
   const btn   = document.getElementById('btnConfirm');
@@ -302,7 +510,12 @@ document.getElementById('btnConfirm').addEventListener('click', async () => {
   try {
     await apiRequest('/appointments', {
       method: 'POST',
-      body: JSON.stringify({ service_id: state.service.id, start_at: state.slot.start }),
+      body: JSON.stringify({
+        service_id: state.service.id,
+        start_at:   state.slot.start,
+        salon_id:   state.salon.id,
+        stylist_id: state.stylist.id,
+      }),
     });
     alert.style.display = 'block';
     alert.className = 'form-alert visible form-alert--success';

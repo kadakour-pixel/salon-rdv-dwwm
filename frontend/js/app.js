@@ -1,6 +1,8 @@
 // js/app.js — Utilitaires globaux partagés par toutes les pages
 
-const API_BASE = 'https://kadakour.alwaysdata.net/api';
+const API_BASE = window.location.hostname === 'kadakour.alwaysdata.net'
+  ? 'https://kadakour.alwaysdata.net/api'
+  : 'http://localhost:3000/api';
 
 // ── Auth ──────────────────────────────────────────────────
 const Auth = {

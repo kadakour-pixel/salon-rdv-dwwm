@@ -196,9 +196,11 @@ async function getMine(req, res) {
   try {
     const [rows] = await db.execute(
       `SELECT a.id, a.start_at, a.end_at, a.status,
-              s.name AS service_name, s.price
+              s.name AS service_name, s.price,
+              CONCAT(st.first_name, ' ', st.last_name) AS stylist_name
        FROM appointments a
        JOIN services s ON s.id = a.service_id
+       LEFT JOIN stylists st ON st.id = a.stylist_id
        WHERE a.user_id = ?
        ORDER BY a.start_at DESC`,
       [req.user.id]

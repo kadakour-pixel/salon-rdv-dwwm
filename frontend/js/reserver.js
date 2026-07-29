@@ -6,23 +6,61 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ── État global ───────────────────────────────────────────
-const state = { service: null, date: null, slot: null };
+const state = { salon: null, stylist: null, service: null, date: null, slot: null };
 let calYear, calMonth;
 const now = new Date();
 calYear  = now.getFullYear();
 calMonth = now.getMonth();
 
+// Cascade de réinitialisation : vide l'état en aval de l'étape modifiée.
+// stylist ne vide pas service (le service appartient au salon, pas au coiffeur).
+function resetFrom(stepName) {
+  if (stepName === 'salon') {
+    state.stylist = null;
+    state.service = null;
+    state.date = null;
+    state.slot = null;
+  } else if (stepName === 'stylist') {
+    state.date = null;
+    state.slot = null;
+  } else if (stepName === 'date') {
+    state.slot = null;
+  }
+}
+
 // ── Navigation stepper ────────────────────────────────────
-function goStep(n) {
-  document.querySelectorAll('.booking-panel').forEach((p, i) =>
-    p.classList.toggle('active', i === n - 1)
+// Étapes nommées : salon/stylist masquées ce lot (contenu au Lot 2), le
+// parcours visible reste service → datetime → confirm, numéroté 1/2/3.
+const STEPS = [
+  { name: 'salon',    label: 'Salon',        visible: false },
+  { name: 'stylist',  label: 'Coiffeur',     visible: false },
+  { name: 'service',  label: 'Prestation',   visible: true  },
+  { name: 'datetime', label: 'Créneau',      visible: true  },
+  { name: 'confirm',  label: 'Confirmation', visible: true  },
+];
+
+function visibleSteps() {
+  return STEPS.filter(s => s.visible);
+}
+
+function goStep(stepName) {
+  document.querySelectorAll('.booking-panel').forEach(p =>
+    p.classList.toggle('active', p.dataset.step === stepName)
   );
-  document.querySelectorAll('.stepper__step').forEach((s, i) => {
-    s.classList.remove('active', 'done');
-    if (i + 1 === n) s.classList.add('active');
-    if (i + 1 < n)  s.classList.add('done');
+
+  const vSteps = visibleSteps();
+  const currentIndex = vSteps.findIndex(s => s.name === stepName);
+
+  document.querySelectorAll('.stepper__step').forEach(el => {
+    const idx = vSteps.findIndex(s => s.name === el.dataset.step);
+    el.classList.remove('active', 'done');
+    if (idx === -1) return;
+    el.querySelector('.stepper__num').textContent = idx + 1;
+    if (idx === currentIndex) el.classList.add('active');
+    if (idx < currentIndex)  el.classList.add('done');
   });
-  if (n === 2) renderCalendar();
+
+  if (stepName === 'datetime') renderCalendar();
 }
 
 // ── Étape 1 — Prestations ─────────────────────────────────
@@ -106,7 +144,7 @@ function renderServicePickCard(s) {
 }
 
 document.addEventListener('DOMContentLoaded', loadServices);
-document.getElementById('btnStep1Next').addEventListener('click', () => goStep(2));
+document.getElementById('btnStep1Next').addEventListener('click', () => goStep('datetime'));
 
 // ── Étape 2 — Calendrier ──────────────────────────────────
 const DAY_NAMES   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
@@ -167,7 +205,7 @@ async function selectDate(dateStr, el) {
   document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'));
   el.classList.add('selected');
   state.date = dateStr;
-  state.slot = null;
+  resetFrom('date');
   document.getElementById('btnStep2Next').disabled = true;
 
   const label     = document.getElementById('slotsDateLabel');
@@ -221,8 +259,8 @@ document.getElementById('calNext').addEventListener('click', () => {
   renderCalendar();
 });
 
-document.getElementById('btnStep2Back').addEventListener('click', () => goStep(1));
-document.getElementById('btnStep2Next').addEventListener('click', () => { buildRecap(); goStep(3); });
+document.getElementById('btnStep2Back').addEventListener('click', () => goStep('service'));
+document.getElementById('btnStep2Next').addEventListener('click', () => { buildRecap(); goStep('confirm'); });
 
 // ── Étape 3 — Récapitulatif ───────────────────────────────
 function buildRecap() {
@@ -253,7 +291,7 @@ function renderRecapRow(label, value) {
   return row;
 }
 
-document.getElementById('btnStep3Back').addEventListener('click', () => goStep(2));
+document.getElementById('btnStep3Back').addEventListener('click', () => goStep('datetime'));
 
 document.getElementById('btnConfirm').addEventListener('click', async () => {
   const btn   = document.getElementById('btnConfirm');

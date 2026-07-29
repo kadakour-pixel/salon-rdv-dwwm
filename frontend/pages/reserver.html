@@ -29,24 +29,30 @@
         <h1>Prenez votre rendez-vous</h1>
       </div>
 
-      <!-- Stepper -->
+      <!-- Stepper (numérotation calculée dynamiquement en JS à partir des étapes visibles) -->
       <nav class="stepper" aria-label="Étapes de réservation">
-        <div class="stepper__step active" id="step-ind-1">
+        <div class="stepper__step active" data-step="service">
           <span class="stepper__num">1</span>
           <span class="stepper__label">Prestation</span>
         </div>
-        <div class="stepper__step" id="step-ind-2">
+        <div class="stepper__step" data-step="datetime">
           <span class="stepper__num">2</span>
           <span class="stepper__label">Créneau</span>
         </div>
-        <div class="stepper__step" id="step-ind-3">
+        <div class="stepper__step" data-step="confirm">
           <span class="stepper__num">3</span>
           <span class="stepper__label">Confirmation</span>
         </div>
       </nav>
 
-      <!-- ── Étape 1 : Choisir une prestation ── -->
-      <div class="booking-panel active" id="panel-1">
+      <!-- ── Étape salon (Lot 2) : masquée, sans contenu fonctionnel ── -->
+      <div class="booking-panel" id="panel-salon" data-step="salon"></div>
+
+      <!-- ── Étape coiffeur (Lot 2) : masquée, sans contenu fonctionnel ── -->
+      <div class="booking-panel" id="panel-stylist" data-step="stylist"></div>
+
+      <!-- ── Étape : Choisir une prestation ── -->
+      <div class="booking-panel active" id="panel-service" data-step="service">
         <div class="card">
           <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Quelle prestation souhaitez-vous ?</h2>
           <div class="service-pick-grid" id="servicePickGrid">
@@ -58,8 +64,8 @@
         </div>
       </div>
 
-      <!-- ── Étape 2 : Choisir une date et un créneau ── -->
-      <div class="booking-panel" id="panel-2">
+      <!-- ── Étape : Choisir une date et un créneau ── -->
+      <div class="booking-panel" id="panel-datetime" data-step="datetime">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;" class="step2-grid">
           <!-- Calendrier -->
           <div class="card">
@@ -83,8 +89,8 @@
         </div>
       </div>
 
-      <!-- ── Étape 3 : Récapitulatif et confirmation ── -->
-      <div class="booking-panel" id="panel-3">
+      <!-- ── Étape : Récapitulatif et confirmation ── -->
+      <div class="booking-panel" id="panel-confirm" data-step="confirm">
         <div class="card" style="max-width:480px;margin:0 auto;">
           <h2 style="font-size:1.3rem;margin-bottom:1.5rem;">Récapitulatif</h2>
           <div id="recapContent"></div>

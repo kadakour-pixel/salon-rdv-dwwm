@@ -96,7 +96,7 @@ function generateSlots(date, avail, duration, booked) {
   return slots;
 }
 
-// POST /api/appointments — client
+// POST /api/appointments — client (salon_id / stylist_id optionnels en body, repli 1/1)
 async function create(req, res) {
   const { service_id, start_at } = req.body;
   const user_id = req.user.id;
@@ -106,11 +106,58 @@ async function create(req, res) {
   }
 
   try {
+    // salon_id : absent → repli 1 sans requête (rétrocompat) ; fourni → entier
+    // positif correspondant à un salon actif.
+    let salonId = 1;
+    if (req.body.salon_id !== undefined) {
+      salonId = Number(req.body.salon_id);
+      if (!Number.isInteger(salonId) || salonId <= 0) {
+        return res.status(400).json({ error: 'salon_id invalide' });
+      }
+      const [[salon]] = await db.execute(
+        'SELECT id FROM salons WHERE id = ? AND is_active = 1',
+        [salonId]
+      );
+      if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
+    }
+
+    // stylist_id : absent → repli 1 sans requête ; fourni → entier positif
+    // correspondant à un coiffeur actif. salon_id du coiffeur ramené dans la
+    // même requête (pas de requête supplémentaire) pour la cohérence ci-dessous ;
+    // par défaut (stylist_id absent) le coiffeur 1 appartient toujours au salon 1
+    // (seed de la migration 005, jamais modifié ailleurs dans l'app).
+    let stylistId = 1;
+    let stylistSalonId = 1;
+    if (req.body.stylist_id !== undefined) {
+      stylistId = Number(req.body.stylist_id);
+      if (!Number.isInteger(stylistId) || stylistId <= 0) {
+        return res.status(400).json({ error: 'stylist_id invalide' });
+      }
+      const [[stylist]] = await db.execute(
+        'SELECT id, salon_id FROM stylists WHERE id = ? AND is_active = 1',
+        [stylistId]
+      );
+      if (!stylist) return res.status(404).json({ error: 'Coiffeur introuvable' });
+      stylistSalonId = stylist.salon_id;
+    }
+
+    // Cohérence stylist ↔ salon : les deux ressources existent séparément, mais la
+    // combinaison est invalide si le coiffeur n'appartient pas au salon demandé
+    // → 400 (pas 404, aucune des deux ressources n'est introuvable).
+    if (stylistSalonId !== salonId) {
+      return res.status(400).json({ error: 'Ce coiffeur n\'appartient pas à ce salon' });
+    }
+
+    // salon_id ramené ici (pas de AND salon_id dans le WHERE) pour distinguer
+    // "service inexistant" (404) de "service existant mais hors de ce salon" (400).
     const [[service]] = await db.execute(
-      'SELECT duration_minutes FROM services WHERE id = ? AND is_active = 1',
+      'SELECT duration_minutes, salon_id FROM services WHERE id = ? AND is_active = 1',
       [service_id]
     );
     if (!service) return res.status(404).json({ error: 'Prestation introuvable' });
+    if (service.salon_id !== salonId) {
+      return res.status(400).json({ error: 'Cette prestation n\'appartient pas à ce salon' });
+    }
 
     // Calcul de end_at avec des chaînes (pas new Date) pour éviter les décalages de fuseau horaire UTC
     const [datePart, timePart] = start_at.split(' ');
@@ -120,19 +167,22 @@ async function create(req, res) {
     const endMM    = String(totalMin % 60).padStart(2, '0');
     const end_at   = `${datePart} ${endHH}:${endMM}:${String(ss).padStart(2, '0')}`;
 
-    // Vérifier conflit
+    // Vérifier conflit — scopé par coiffeur : avant le multi-coiffeur, un seul RDV
+    // pouvait occuper un créneau donné dans tout le salon ; désormais deux RDV
+    // simultanés sont valides dès lors qu'ils concernent deux coiffeurs différents.
     const [conflict] = await db.execute(
       `SELECT id FROM appointments
-       WHERE status != 'cancelled' AND start_at < ? AND end_at > ?`,
-      [end_at, start_at]
+       WHERE status != 'cancelled' AND start_at < ? AND end_at > ? AND stylist_id = ?`,
+      [end_at, start_at, stylistId]
     );
     if (conflict.length > 0) {
       return res.status(409).json({ error: 'Créneau déjà pris' });
     }
 
     const [result] = await db.execute(
-      'INSERT INTO appointments (user_id, service_id, start_at, end_at) VALUES (?, ?, ?, ?)',
-      [user_id, service_id, start_at, end_at]
+      `INSERT INTO appointments (user_id, service_id, salon_id, stylist_id, start_at, end_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [user_id, service_id, salonId, stylistId, start_at, end_at]
     );
     res.status(201).json({ id: result.insertId, start_at, end_at });
   } catch (err) {

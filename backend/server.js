@@ -17,6 +17,7 @@ const authRoutes         = require('./src/routes/auth.routes');
 const serviceRoutes      = require('./src/routes/service.routes');
 const appointmentRoutes  = require('./src/routes/appointment.routes');
 const availabilityRoutes = require('./src/routes/availability.routes');
+const reviewRoutes       = require('./src/routes/review.routes');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -31,6 +32,7 @@ app.use('/api/auth',           authRoutes);
 app.use('/api/services',       serviceRoutes);
 app.use('/api/appointments',   appointmentRoutes);
 app.use('/api/availabilities', availabilityRoutes);
+app.use('/api/reviews',        reviewRoutes);
 
 // ── Health check ─────────────────────────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'OK' }));

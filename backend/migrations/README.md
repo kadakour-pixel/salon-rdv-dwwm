@@ -19,3 +19,7 @@ Ordre d'application : `001` → `002` → `003` → `004` → `005`.
 | 003 | Oui | Non |
 | 004 | Oui | Non |
 | 005 | Oui (29/07/2026) | Non |
+
+## Note
+
+Après application d'une migration en dev, rejouer `backend/tests/schema_test.sql` sur `salon_rdv_test` : la base de test n'est pas recréée automatiquement et un schéma en retard fait échouer les suites qui touchent les nouvelles tables. (Constaté lors de la migration 005 : `salon_rdv_test` était restée au schéma pré-005.)

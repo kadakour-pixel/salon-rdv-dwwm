@@ -2,7 +2,7 @@
 const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/appointment.controller');
-const { authenticate, requireRole } = require('../middlewares/auth.middleware');
+const { authenticate, requireRole, resolveSalonScope } = require('../middlewares/auth.middleware');
 
 // GET /api/appointments/slots?date=YYYY-MM-DD&serviceId=X — public
 router.get('/slots', ctrl.getAvailableSlots);
@@ -10,8 +10,8 @@ router.get('/slots', ctrl.getAvailableSlots);
 // GET /api/appointments/me — client connecté
 router.get('/me', authenticate, ctrl.getMine);
 
-// GET /api/appointments — admin uniquement
-router.get('/', authenticate, requireRole('admin'), ctrl.getAll);
+// GET /api/appointments — admin + manager (manager limité aux RDV de son salon)
+router.get('/', authenticate, requireRole('admin', 'manager'), resolveSalonScope, ctrl.getAll);
 
 // POST /api/appointments — client connecté
 router.post('/', authenticate, ctrl.create);

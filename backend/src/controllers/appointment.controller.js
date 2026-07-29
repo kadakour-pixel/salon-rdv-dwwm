@@ -210,7 +210,7 @@ async function getMine(req, res) {
   }
 }
 
-// GET /api/appointments — admin
+// GET /api/appointments — admin + manager (manager limité aux RDV de son salon)
 async function getAll(req, res) {
   const { date } = req.query;
   try {
@@ -222,10 +222,19 @@ async function getAll(req, res) {
       JOIN users    u ON u.id = a.user_id
       JOIN services s ON s.id = a.service_id
     `;
+    const conditions = [];
     const params = [];
     if (date) {
-      query += ' WHERE DATE(a.start_at) = ?';
+      conditions.push('DATE(a.start_at) = ?');
       params.push(date);
+    }
+    // Manager : ne voit que les RDV de son salon ; admin (req.salonScope === null) : inchangé.
+    if (req.salonScope !== null) {
+      conditions.push('a.salon_id = ?');
+      params.push(req.salonScope);
+    }
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
     }
     query += ' ORDER BY a.start_at ASC';
 

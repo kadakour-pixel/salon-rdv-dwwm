@@ -26,6 +26,19 @@ async function resolveStylistId(raw) {
   return { stylistId };
 }
 
+// Manager : le coiffeur visé (résolu, repli 1 inclus) doit appartenir à son
+// salon — pas de repli "premier coiffeur du salon" : un manager hors salon 1
+// doit expliciter stylist_id. Admin (req.salonScope === null) : aucun changement.
+async function checkStylistSalonScope(req, stylistId) {
+  if (req.salonScope === null) return null;
+
+  const [[stylistRow]] = await db.execute('SELECT salon_id FROM stylists WHERE id = ?', [stylistId]);
+  if (!stylistRow || stylistRow.salon_id !== req.salonScope) {
+    return { status: 403, body: { error: 'Accès limité à votre salon' } };
+  }
+  return null;
+}
+
 // GET /api/availabilities?stylist_id= — public
 // Retourne les horaires hebdomadaires et les dates bloquées d'un coiffeur (1 par défaut)
 async function getAll(req, res) {
@@ -103,6 +116,9 @@ async function updateDay(req, res) {
     const { stylistId, error } = await resolveStylistId(req.body.stylist_id);
     if (error) return res.status(error.status).json(error.body);
 
+    const scopeError = await checkStylistSalonScope(req, stylistId);
+    if (scopeError) return res.status(scopeError.status).json(scopeError.body);
+
     // Upsert (INSERT + UPDATE en une seule requête) : crée le jour s'il n'existe pas, sinon met à jour
     // stylist_id fait partie des colonnes insérées : c'est lui qui pilote quelle
     // ligne l'index UNIQUE uq_avail_stylist_day (stylist_id, day_of_week) cible.
@@ -132,6 +148,9 @@ async function blockDate(req, res) {
     const { stylistId, error } = await resolveStylistId(req.body.stylist_id);
     if (error) return res.status(error.status).json(error.body);
 
+    const scopeError = await checkStylistSalonScope(req, stylistId);
+    if (scopeError) return res.status(scopeError.status).json(scopeError.body);
+
     // stylist_id fait partie des colonnes insérées : c'est lui qui pilote quelle
     // ligne l'index UNIQUE uq_avail_stylist_blocked (stylist_id, blocked_date) cible.
     await db.execute(
@@ -153,6 +172,9 @@ async function unblockDate(req, res) {
   try {
     const { stylistId, error } = await resolveStylistId(req.query.stylist_id);
     if (error) return res.status(error.status).json(error.body);
+
+    const scopeError = await checkStylistSalonScope(req, stylistId);
+    if (scopeError) return res.status(scopeError.status).json(scopeError.body);
 
     // Scope par stylist_id : sans ce filtre, débloquer une date supprimerait la
     // ligne de TOUS les coiffeurs qui l'avaient bloquée (l'index est désormais
@@ -179,6 +201,9 @@ async function deleteDay(req, res) {
   try {
     const { stylistId, error } = await resolveStylistId(req.query.stylist_id);
     if (error) return res.status(error.status).json(error.body);
+
+    const scopeError = await checkStylistSalonScope(req, stylistId);
+    if (scopeError) return res.status(scopeError.status).json(scopeError.body);
 
     // Scope par stylist_id : sans ce filtre, fermer un jour le fermerait pour
     // TOUS les coiffeurs (même raison que unblockDate ci-dessus).

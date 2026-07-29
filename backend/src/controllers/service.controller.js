@@ -68,8 +68,20 @@ async function create(req, res) {
     return res.status(400).json({ error: 'Le prix doit être un nombre positif' });
   }
   try {
-    const { salonId, error } = await resolveSalonId(req.body.salon_id);
-    if (error) return res.status(error.status).json(error.body);
+    // Manager : salon forcé au sien (req.salonScope) ; un salon_id explicite
+    // différent du sien est refusé. Admin (req.salonScope === null) : comportement
+    // inchangé depuis 5b-3 — salon_id optionnel en body, repli 1.
+    let salonId;
+    if (req.salonScope !== null) {
+      if (req.body.salon_id !== undefined && Number(req.body.salon_id) !== req.salonScope) {
+        return res.status(403).json({ error: 'Accès limité à votre salon' });
+      }
+      salonId = req.salonScope;
+    } else {
+      const resolved = await resolveSalonId(req.body.salon_id);
+      if (resolved.error) return res.status(resolved.error.status).json(resolved.error.body);
+      salonId = resolved.salonId;
+    }
 
     const [result] = await db.execute(
       'INSERT INTO services (salon_id, name, duration_minutes, price) VALUES (?, ?, ?, ?)',
@@ -102,6 +114,13 @@ async function update(req, res) {
     return res.status(400).json({ error: 'Le prix doit être un nombre positif' });
   }
   try {
+    // Manager : la prestation visée doit appartenir à son salon (admin : aucun changement).
+    if (req.salonScope !== null) {
+      const [[svc]] = await db.execute('SELECT salon_id FROM services WHERE id = ?', [req.params.id]);
+      if (!svc) return res.status(404).json({ error: 'Prestation introuvable' });
+      if (svc.salon_id !== req.salonScope) return res.status(403).json({ error: 'Accès limité à votre salon' });
+    }
+
     const [result] = await db.execute(
       'UPDATE services SET name = ?, duration_minutes = ?, price = ? WHERE id = ?',
       [name, duration_minutes, price, req.params.id]
@@ -118,6 +137,13 @@ async function update(req, res) {
 // Suppression logique : on met is_active = 0 au lieu de DELETE pour garder l'historique des RDV passés
 async function remove(req, res) {
   try {
+    // Manager : la prestation visée doit appartenir à son salon (admin : aucun changement).
+    if (req.salonScope !== null) {
+      const [[svc]] = await db.execute('SELECT salon_id FROM services WHERE id = ?', [req.params.id]);
+      if (!svc) return res.status(404).json({ error: 'Prestation introuvable' });
+      if (svc.salon_id !== req.salonScope) return res.status(403).json({ error: 'Accès limité à votre salon' });
+    }
+
     const [result] = await db.execute(
       'UPDATE services SET is_active = 0 WHERE id = ?',
       [req.params.id]

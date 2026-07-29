@@ -1,7 +1,7 @@
 // src/controllers/appointment.controller.js
 const db = require('../config/db');
 
-// GET /api/appointments/slots?date=YYYY-MM-DD&serviceId=X — client
+// GET /api/appointments/slots?date=YYYY-MM-DD&serviceId=X&stylist_id= — client
 async function getAvailableSlots(req, res) {
   const { date, serviceId } = req.query;
   if (!date || !serviceId) {
@@ -9,6 +9,21 @@ async function getAvailableSlots(req, res) {
   }
 
   try {
+    // stylist_id : absent → repli 1 sans requête (rétrocompat mono-coiffeur) ;
+    // fourni → doit être un entier positif correspondant à un coiffeur actif.
+    let stylistId = 1;
+    if (req.query.stylist_id !== undefined) {
+      stylistId = Number(req.query.stylist_id);
+      if (!Number.isInteger(stylistId) || stylistId <= 0) {
+        return res.status(400).json({ error: 'stylist_id invalide' });
+      }
+      const [[stylist]] = await db.execute(
+        'SELECT id FROM stylists WHERE id = ? AND is_active = 1',
+        [stylistId]
+      );
+      if (!stylist) return res.status(404).json({ error: 'Coiffeur introuvable' });
+    }
+
     // 1. Récupérer la durée du service
     const [[service]] = await db.execute(
       'SELECT duration_minutes FROM services WHERE id = ? AND is_active = 1',
@@ -16,27 +31,31 @@ async function getAvailableSlots(req, res) {
     );
     if (!service) return res.status(404).json({ error: 'Prestation introuvable' });
 
-    // 2. Récupérer les horaires d'ouverture pour ce jour
+    // 2. Récupérer les horaires d'ouverture pour ce jour et ce coiffeur
     const dayOfWeek = new Date(date).getDay();
     const [[avail]] = await db.execute(
       `SELECT open_time, close_time FROM availabilities
-       WHERE day_of_week = ? AND is_blocked = 0`,
-      [dayOfWeek]
+       WHERE day_of_week = ? AND is_blocked = 0 AND stylist_id = ?`,
+      [dayOfWeek, stylistId]
     );
     if (!avail) return res.json({ slots: [] }); // fermé ce jour
 
-    // 3. Vérifier si la date est bloquée
+    // 3. Vérifier si la date est bloquée pour ce coiffeur
     const [[blocked]] = await db.execute(
-      'SELECT id FROM availabilities WHERE blocked_date = ? AND is_blocked = 1',
-      [date]
+      'SELECT id FROM availabilities WHERE blocked_date = ? AND is_blocked = 1 AND stylist_id = ?',
+      [date, stylistId]
     );
     if (blocked) return res.json({ slots: [] });
 
-    // 4. Récupérer les RDV déjà pris ce jour-là
+    // 4. Récupérer les RDV déjà pris ce jour-là pour ce coiffeur
+    // NB : create() (POST /api/appointments) n'écrit pas encore stylist_id (prévu
+    // en 5b-2) — tous les RDV existants sont donc stylist_id = 1. Filtrer ici par
+    // un autre coiffeur renvoie temporairement une liste sans RDV bloquants, ce
+    // qui est correct en l'état : aucun RDV n'est encore rattaché à ce coiffeur.
     const [booked] = await db.execute(
       `SELECT start_at, end_at FROM appointments
-       WHERE DATE(start_at) = ? AND status != 'cancelled'`,
-      [date]
+       WHERE DATE(start_at) = ? AND status != 'cancelled' AND stylist_id = ?`,
+      [date, stylistId]
     );
 
     // 5. Générer les créneaux disponibles (pas à pas de 30 min)

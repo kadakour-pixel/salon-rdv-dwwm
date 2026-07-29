@@ -108,3 +108,159 @@ describe('POST /api/availabilities/block + DELETE /block/:date', () => {
   });
 
 });
+
+// ── Multi-coiffeur (stylist_id) ──────────────────────────────────────────
+// Un second stylist de test, rattaché au salon 1 seedé. Jamais de TRUNCATE sur
+// salons/stylists : le stylist 1 seedé est la cible du DEFAULT 1 des autres
+// tables (services, appointments, availabilities).
+let secondStylistId, testServiceId;
+
+beforeAll(async () => {
+  const [stylistResult] = await db.execute(
+    'INSERT INTO stylists (salon_id, first_name, last_name) VALUES (1, ?, ?)',
+    ['Second', 'Testeur']
+  );
+  secondStylistId = stylistResult.insertId;
+
+  const [serviceResult] = await db.execute(
+    'INSERT INTO services (name, duration_minutes, price) VALUES (?, ?, ?)',
+    ['Service test créneaux', 60, 20.00]
+  );
+  testServiceId = serviceResult.insertId;
+});
+
+afterAll(async () => {
+  await db.execute('DELETE FROM services WHERE id = ?', [testServiceId]);
+  await db.execute('DELETE FROM stylists WHERE id = ?', [secondStylistId]);
+});
+
+describe('Horaires et créneaux par coiffeur (stylist_id)', () => {
+
+  it('upsert avec stylist_id explicite : les horaires des deux coiffeurs coexistent pour le même jour', async () => {
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '09:00', close_time: '19:00' }); // repli stylist 1
+
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '10:00', close_time: '20:00', stylist_id: secondStylistId });
+
+    const [rows] = await db.execute(
+      'SELECT stylist_id, open_time FROM availabilities WHERE day_of_week = ? ORDER BY stylist_id',
+      [DAY_OF_WEEK]
+    );
+    expect(rows.length).toBe(2);
+    expect(rows.find(r => r.stylist_id === 1).open_time).toBe('09:00:00');
+    expect(rows.find(r => r.stylist_id === secondStylistId).open_time).toBe('10:00:00');
+  });
+
+  it('upsert sans stylist_id retombe sur le coiffeur 1 (comportement inchangé)', async () => {
+    const res = await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '09:00', close_time: '19:00' });
+
+    expect(res.status).toBe(200);
+    const [[row]] = await db.execute(
+      'SELECT stylist_id FROM availabilities WHERE day_of_week = ?',
+      [DAY_OF_WEEK]
+    );
+    expect(row.stylist_id).toBe(1);
+  });
+
+  it('getForDay est filtré par stylist_id', async () => {
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '10:00', close_time: '20:00', stylist_id: secondStylistId });
+
+    // Le coiffeur 1 n'a aucun horaire ce jour (table vide via beforeEach)
+    const dayDefault = await request(app).get(`/api/availabilities/day?date=${TUESDAY}`);
+    expect(dayDefault.body).toEqual({ open: false });
+
+    const daySecond = await request(app).get(`/api/availabilities/day?date=${TUESDAY}&stylist_id=${secondStylistId}`);
+    expect(daySecond.body).toEqual({ open: true, open_time: '10:00:00', close_time: '20:00:00' });
+  });
+
+  it('GET /api/appointments/slots est filtré par stylist_id', async () => {
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '10:00', close_time: '12:00', stylist_id: secondStylistId });
+
+    // Coiffeur 1 (repli) : pas d'horaire ce jour → aucun créneau
+    const slotsDefault = await request(app)
+      .get(`/api/appointments/slots?date=${TUESDAY}&serviceId=${testServiceId}`);
+    expect(slotsDefault.body.slots).toEqual([]);
+
+    // Coiffeur de test : horaire 10h-12h, service 60 min, pas de 30 min
+    // → 3 créneaux possibles (10h00, 10h30, 11h00)
+    const slotsSecond = await request(app)
+      .get(`/api/appointments/slots?date=${TUESDAY}&serviceId=${testServiceId}&stylist_id=${secondStylistId}`);
+    expect(slotsSecond.body.slots.length).toBe(3);
+  });
+
+  it('deleteDay scopé : fermer le jour du coiffeur de test ne supprime pas la ligne du coiffeur 1', async () => {
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '09:00', close_time: '19:00' }); // stylist 1
+
+    await request(app)
+      .put(`/api/availabilities/${DAY_OF_WEEK}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ open_time: '10:00', close_time: '20:00', stylist_id: secondStylistId });
+
+    const delRes = await request(app)
+      .delete(`/api/availabilities/${DAY_OF_WEEK}?stylist_id=${secondStylistId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(delRes.status).toBe(200);
+
+    const [rows] = await db.execute('SELECT stylist_id FROM availabilities WHERE day_of_week = ?', [DAY_OF_WEEK]);
+    expect(rows.length).toBe(1);
+    expect(rows[0].stylist_id).toBe(1);
+  });
+
+  it('unblockDate scopé : débloquer une date pour le coiffeur de test ne débloque pas le coiffeur 1', async () => {
+    const blockedDate = '2026-08-02';
+    await request(app)
+      .post('/api/availabilities/block')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ blocked_date: blockedDate }); // stylist 1
+
+    await request(app)
+      .post('/api/availabilities/block')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ blocked_date: blockedDate, stylist_id: secondStylistId });
+
+    const unblockRes = await request(app)
+      .delete(`/api/availabilities/block/${blockedDate}?stylist_id=${secondStylistId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(unblockRes.status).toBe(200);
+
+    const [rows] = await db.execute(
+      'SELECT stylist_id FROM availabilities WHERE blocked_date = ?',
+      [blockedDate]
+    );
+    expect(rows.length).toBe(1);
+    expect(rows[0].stylist_id).toBe(1);
+  });
+
+  it('retourne 400 pour un stylist_id = 0', async () => {
+    const res = await request(app).get(`/api/availabilities/day?date=${TUESDAY}&stylist_id=0`);
+    expect(res.status).toBe(400);
+  });
+
+  it("retourne 400 pour un stylist_id = 'abc'", async () => {
+    const res = await request(app).get(`/api/availabilities/day?date=${TUESDAY}&stylist_id=abc`);
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne 404 pour un stylist_id inexistant', async () => {
+    const res = await request(app).get(`/api/availabilities/day?date=${TUESDAY}&stylist_id=999999`);
+    expect(res.status).toBe(404);
+  });
+
+});

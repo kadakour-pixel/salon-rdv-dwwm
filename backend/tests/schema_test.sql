@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS salon_rdv_test
 USE salon_rdv_test;
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS availabilities;
 DROP TABLE IF EXISTS services;
@@ -58,4 +59,16 @@ CREATE TABLE appointments (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE reviews (
+  id             INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  appointment_id INT UNSIGNED NOT NULL UNIQUE,
+  user_id        INT UNSIGNED NOT NULL,
+  rating         TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment        TEXT NOT NULL,
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_reviews_appointment FOREIGN KEY (appointment_id)
+    REFERENCES appointments(id),
+  CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

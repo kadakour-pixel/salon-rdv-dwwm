@@ -83,3 +83,80 @@ describe('CRUD /api/services', () => {
   });
 
 });
+
+// ── Services par salon (salon_id) ────────────────────────────────────────
+// Un salon de fixture, créé une seule fois (JAMAIS de TRUNCATE sur salons :
+// le salon 1 seedé est la cible du DEFAULT 1 des autres tables). Les services
+// rattachés à ce salon sont recréés dans chaque test qui en a besoin, car le
+// beforeEach ci-dessus fait TRUNCATE TABLE services avant chaque test — une
+// fixture service créée en beforeAll serait détruite avant le premier test.
+let otherSalonId;
+
+beforeAll(async () => {
+  const [result] = await db.execute(
+    'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+    ['Salon Test Services', '3 rue du Test', '0600000003']
+  );
+  otherSalonId = result.insertId;
+});
+
+afterAll(async () => {
+  await db.execute('DELETE FROM salons WHERE id = ?', [otherSalonId]);
+});
+
+describe('Prestations par salon (salon_id)', () => {
+
+  it('GET / sans salon_id retourne uniquement les prestations du salon 1 (comportement inchangé)', async () => {
+    const res = await request(app).get('/api/services');
+
+    expect(res.status).toBe(200);
+    expect(res.body.some(s => s.id === serviceId)).toBe(true);
+  });
+
+  it('GET /?salon_id= retourne uniquement les prestations du salon demandé', async () => {
+    const [otherService] = await db.execute(
+      'INSERT INTO services (name, duration_minutes, price, salon_id) VALUES (?, ?, ?, ?)',
+      ['Coupe autre salon', 30, 25.00, otherSalonId]
+    );
+    const otherServiceId = otherService.insertId;
+
+    const res = await request(app).get(`/api/services?salon_id=${otherSalonId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.some(s => s.id === otherServiceId)).toBe(true);
+    expect(res.body.some(s => s.id === serviceId)).toBe(false);
+  });
+
+  it("GET /?salon_id=abc retourne 400", async () => {
+    const res = await request(app).get('/api/services?salon_id=abc');
+    expect(res.status).toBe(400);
+  });
+
+  it('GET /?salon_id=999999 retourne 404', async () => {
+    const res = await request(app).get('/api/services?salon_id=999999');
+    expect(res.status).toBe(404);
+  });
+
+  it('POST avec salon_id explicite rattache la prestation au bon salon', async () => {
+    const res = await request(app)
+      .post('/api/services')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Coupe autre salon', duration_minutes: 30, price: 25, salon_id: otherSalonId });
+
+    expect(res.status).toBe(201);
+
+    const [[row]] = await db.execute('SELECT salon_id FROM services WHERE id = ?', [res.body.id]);
+    expect(row.salon_id).toBe(otherSalonId);
+  });
+
+  it('PUT /:id contenant salon_id retourne 400 (salon_id non modifiable)', async () => {
+    const res = await request(app)
+      .put(`/api/services/${serviceId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Coupe modifiée', duration_minutes: 45, price: 30, salon_id: otherSalonId });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('salon_id non modifiable');
+  });
+
+});

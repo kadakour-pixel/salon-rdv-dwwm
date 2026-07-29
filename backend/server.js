@@ -24,7 +24,26 @@ const PORT = process.env.PORT || 3000;
 
 // ── Middlewares globaux ───────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+
+// Authentification par JWT en header (pas de cookies) : le risque CSRF est
+// faible ici, mais une liste blanche d'origines reste une bonne pratique de
+// défense en profondeur plutôt qu'un cors() ouvert à toutes origines.
+const allowedOrigins = [
+  'https://kadakour.alwaysdata.net',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+];
+app.use(cors({
+  origin(origin, callback) {
+    // origin est undefined pour les requêtes sans header Origin (curl, tests
+    // Supertest, health checks) — on les accepte.
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origine non autorisée par CORS'));
+  },
+}));
+
 app.use(express.json());
 
 // ── Routes ───────────────────────────────────────────────────

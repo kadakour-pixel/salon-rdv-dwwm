@@ -51,6 +51,22 @@ async function createReview(req, res) {
   }
 }
 
+// GET /api/reviews/stats — public
+async function getReviewStats(req, res) {
+  try {
+    const [[row]] = await db.execute(
+      'SELECT COUNT(*) AS count, AVG(rating) AS average FROM reviews'
+    );
+    const count = Number(row.count);
+    // AVG renvoie NULL sans lignes, et mysql2 peut le renvoyer sous forme de chaîne
+    const average = count === 0 ? null : Math.round(Number(row.average) * 10) / 10;
+    res.json({ count, average });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
 // GET /api/reviews — public
 async function getPublicReviews(req, res) {
   try {
@@ -90,4 +106,4 @@ async function getMyReviewableAppointments(req, res) {
   }
 }
 
-module.exports = { createReview, getPublicReviews, getMyReviewableAppointments };
+module.exports = { createReview, getPublicReviews, getMyReviewableAppointments, getReviewStats };

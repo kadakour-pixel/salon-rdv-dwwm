@@ -108,6 +108,7 @@
 }
 .hero__badge-text p { font-size: .7rem; color: var(--text-muted); margin-bottom: .1rem; }
 .hero__badge-text strong { font-size: .9rem; color: var(--primary); }
+.hero__badge.hidden { display: none; }
 
 /* ── Stats ───────────────────────────────────────────────── */
 .stats {

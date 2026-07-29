@@ -3,6 +3,9 @@ const router = require('express').Router();
 const ctrl   = require('../controllers/review.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
 
+// GET /api/reviews/stats — public
+router.get('/stats', ctrl.getReviewStats);
+
 // GET /api/reviews — public
 router.get('/', ctrl.getPublicReviews);
 

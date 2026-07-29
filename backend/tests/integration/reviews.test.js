@@ -175,3 +175,32 @@ describe('GET /api/reviews', () => {
   });
 
 });
+
+describe('GET /api/reviews/stats', () => {
+
+  it('retourne count: 0 et average: null quand la table est vide', async () => {
+    const res = await request(app).get('/api/reviews/stats');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ count: 0, average: null });
+  });
+
+  it('retourne le nombre et la moyenne arrondie à 1 décimale pour 2 avis', async () => {
+    const id1 = await createAppointment({ hoursFromNow: -2 });
+    const id2 = await createAppointment({ hoursFromNow: -3 });
+    await db.execute(
+      'INSERT INTO reviews (appointment_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+      [id1, userId, 5, 'Top']
+    );
+    await db.execute(
+      'INSERT INTO reviews (appointment_id, user_id, rating, comment) VALUES (?, ?, ?, ?)',
+      [id2, userId, 4, 'Bien']
+    );
+
+    const res = await request(app).get('/api/reviews/stats');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ count: 2, average: 4.5 });
+  });
+
+});

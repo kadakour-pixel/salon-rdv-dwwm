@@ -56,4 +56,35 @@ function renderReviewCard(review) {
   return article;
 }
 
-document.addEventListener('DOMContentLoaded', loadPublicReviews);
+// ── Badge note moyenne (hero) ─────────────────────────────
+async function loadReviewStats() {
+  const badge = document.getElementById('heroBadge');
+  if (!badge) return;
+
+  try {
+    const stats = await apiRequest('/reviews/stats');
+
+    if (stats.count === 0) {
+      badge.classList.add('hidden');
+      return;
+    }
+
+    const average = stats.average.toLocaleString('fr-FR', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+    document.getElementById('heroRatingValue').textContent = average;
+    document.getElementById('heroRatingCount').textContent =
+      `${stats.count} avis`;
+    badge.classList.remove('hidden');
+  } catch (err) {
+    // Pas de fausse donnée affichée en cas d'erreur réseau
+    badge.classList.add('hidden');
+    console.error(err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadPublicReviews();
+  loadReviewStats();
+});

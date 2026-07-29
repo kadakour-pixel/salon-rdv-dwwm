@@ -478,13 +478,18 @@ function buildRecap() {
   });
   const timeLabel = startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-  document.getElementById('recapContent').replaceChildren(
+  const rows = [];
+  if (STEPS.find(s => s.name === 'salon').visible)   rows.push(renderRecapRow('Salon', state.salon.name));
+  if (STEPS.find(s => s.name === 'stylist').visible) rows.push(renderRecapRow('Coiffeur', state.stylist.name));
+  rows.push(
     renderRecapRow('Prestation', state.service.name),
     renderRecapRow('Durée', `${state.service.duration} min`),
     renderRecapRow('Date', dateLabel),
     renderRecapRow('Heure', timeLabel),
     renderRecapRow('Tarif', `${parseFloat(state.service.price).toFixed(2)} €`),
   );
+
+  document.getElementById('recapContent').replaceChildren(...rows);
 }
 
 // Construit une ligne du récapitulatif en évitant toute injection HTML (nom de prestation venant de l'API)

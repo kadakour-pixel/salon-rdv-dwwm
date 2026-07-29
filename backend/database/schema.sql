@@ -18,8 +18,35 @@ DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS availabilities;
 DROP TABLE IF EXISTS services;
+DROP TABLE IF EXISTS stylists;
+DROP TABLE IF EXISTS salons;
 DROP TABLE IF EXISTS users;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ------------------------------------------------------------
+-- Table : salons
+-- ------------------------------------------------------------
+CREATE TABLE salons (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name       VARCHAR(100) NOT NULL,
+  address    VARCHAR(255),
+  phone      VARCHAR(20),
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- Table : stylists
+-- ------------------------------------------------------------
+CREATE TABLE stylists (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  salon_id   INT UNSIGNED NOT NULL,
+  first_name VARCHAR(50) NOT NULL,
+  last_name  VARCHAR(50) NOT NULL,
+  is_active  TINYINT(1) NOT NULL DEFAULT 1,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (salon_id) REFERENCES salons(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 -- Table : users
@@ -30,13 +57,15 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   first_name    VARCHAR(100) NOT NULL,
   last_name     VARCHAR(100) NOT NULL,
-  role          ENUM('client', 'admin') NOT NULL DEFAULT 'client',
+  role          ENUM('client', 'admin', 'manager') NOT NULL DEFAULT 'client',
+  salon_id      INT UNSIGNED NULL COMMENT 'NULL = client ou admin global, sinon manager rattaché à un salon',
   email_verified     TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = adresse email confirmée via le lien reçu par mail',
   verification_token VARCHAR(64) NULL,
   token_expires      DATETIME NULL COMMENT 'Expiration du verification_token (24h après génération)',
   verification_sent_at DATETIME NULL COMMENT 'Date du dernier envoi du mail de vérification (register ou resend)',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (salon_id) REFERENCES salons(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -44,11 +73,13 @@ CREATE TABLE users (
 -- ------------------------------------------------------------
 CREATE TABLE services (
   id               INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  salon_id         INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Rétrocompatibilité mono-salon : retrait du DEFAULT prévu dans une migration future',
   name             VARCHAR(150) NOT NULL,
   duration_minutes SMALLINT UNSIGNED NOT NULL COMMENT 'Durée en minutes',
   price            DECIMAL(6,2) NOT NULL,
   is_active        TINYINT(1) NOT NULL DEFAULT 1,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (salon_id) REFERENCES salons(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -56,12 +87,20 @@ CREATE TABLE services (
 -- ------------------------------------------------------------
 CREATE TABLE availabilities (
   id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  stylist_id   INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Rétrocompatibilité mono-coiffeur : retrait du DEFAULT prévu dans une migration future',
   day_of_week  TINYINT UNSIGNED NULL COMMENT '0=Dimanche … 6=Samedi (NULL si blocked_date)',
   open_time    TIME NULL,
   close_time   TIME NULL,
   is_blocked   TINYINT(1) NOT NULL DEFAULT 0 COMMENT '1 = jour fermé exceptionnellement',
   blocked_date DATE NULL COMMENT 'Date précise pour fermeture exceptionnelle',
-  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (stylist_id) REFERENCES stylists(id),
+  -- Deux index composites distincts : une ligne d'horaire hebdo a toujours
+  -- blocked_date NULL, une ligne de blocage a toujours day_of_week NULL.
+  -- MariaDB autorise plusieurs NULL dans un UNIQUE, donc les deux familles
+  -- de lignes cohabitent sans conflit entre elles.
+  UNIQUE KEY uq_avail_stylist_day (stylist_id, day_of_week),
+  UNIQUE KEY uq_avail_stylist_blocked (stylist_id, blocked_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -71,6 +110,8 @@ CREATE TABLE appointments (
   id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id    INT UNSIGNED NOT NULL,
   service_id INT UNSIGNED NOT NULL,
+  salon_id   INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Rétrocompatibilité mono-salon : retrait du DEFAULT prévu dans une migration future',
+  stylist_id INT UNSIGNED NOT NULL DEFAULT 1 COMMENT 'Rétrocompatibilité mono-coiffeur : retrait du DEFAULT prévu dans une migration future',
   start_at   DATETIME NOT NULL,
   end_at     DATETIME NOT NULL,
   status     ENUM('pending','confirmed','cancelled') NOT NULL DEFAULT 'confirmed',
@@ -79,6 +120,8 @@ CREATE TABLE appointments (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
   FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT,
+  FOREIGN KEY (salon_id)   REFERENCES salons(id),
+  FOREIGN KEY (stylist_id) REFERENCES stylists(id),
   INDEX idx_start_at (start_at),
   INDEX idx_user_id  (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -101,6 +144,13 @@ CREATE TABLE reviews (
 -- ============================================================
 -- Données initiales (seed)
 -- ============================================================
+
+-- Salon et coiffeur par défaut (cible des DEFAULT 1 ci-dessus)
+INSERT INTO salons (id, name, address, phone) VALUES
+  (1, 'Salon Élégance', '1 rue de la République, 59100 Roubaix', '0300000000');
+
+INSERT INTO stylists (id, salon_id, first_name, last_name) VALUES
+  (1, 1, 'Équipe', 'Salon Élégance');
 
 -- Compte admin par défaut
 -- Mot de passe : Admin1234! (à changer en production !)

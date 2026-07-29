@@ -1,6 +1,6 @@
 # Migrations
 
-Ordre d'application : `001` → `002` → `003` → `004`.
+Ordre d'application : `001` → `002` → `003` → `004` → `005`.
 
 | # | Fichier | Description |
 |---|---|---|
@@ -8,6 +8,7 @@ Ordre d'application : `001` → `002` → `003` → `004`.
 | 002 | `002_reminders.sql` | Ajoute les rappels automatiques par e-mail (`reminder_sent` sur `appointments`). |
 | 003 | `003_verification_resend_cooldown.sql` | Ajoute une colonne dédiée pour le cooldown de renvoi de vérification (`verification_sent_at`). |
 | 004 | `004_reviews.sql` | Ajoute la table `reviews` pour les avis clients (note + commentaire, liés à un RDV). |
+| 005 | `005_multi_salons.sql` | Ajoute `salons` et `stylists`, rattache `services`/`appointments`/`availabilities`/`users` (colonnes `DEFAULT 1` rétrocompatibles), ajoute le rôle `manager`. Corrige au passage un bug latent : `availabilities` n'avait jamais eu d'index UNIQUE alors que le controller fait un `ON DUPLICATE KEY UPDATE` dessus, ce qui créait des doublons silencieux (5 doublons constatés et supprimés en dev). Ajout de `uq_avail_stylist_day` et `uq_avail_stylist_blocked`. |
 
 ## Statut
 
@@ -17,7 +18,4 @@ Ordre d'application : `001` → `002` → `003` → `004`.
 | 002 | Oui | Non |
 | 003 | Oui | Non |
 | 004 | Oui | Non |
-
-## Note
-
-La migration 005 est réservée à l'évolution multi-salons/multi-coiffeurs.
+| 005 | Oui (29/07/2026) | Non |

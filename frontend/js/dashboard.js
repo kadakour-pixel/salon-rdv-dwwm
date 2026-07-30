@@ -3,6 +3,24 @@
 let agendaDate = new Date();
 agendaDate.setHours(0, 0, 0, 0);
 
+// ── Résolution du salon_id (manager uniquement, prestations) ─────
+// Mémoïsée : un seul appel /auth/me même si loadServices()/loadMetrics()
+// s'exécutent en parallèle au chargement de page. Admin → résout null,
+// les GET /services partent alors sans paramètre (URL inchangée).
+let managerSalonIdPromise = null;
+
+function resolveManagerSalonId() {
+  if (Auth.getRole() !== 'manager') return Promise.resolve(null);
+  if (!managerSalonIdPromise) {
+    managerSalonIdPromise = apiRequest('/auth/me').then(me => me.salon_id);
+  }
+  return managerSalonIdPromise;
+}
+
+function servicesUrl(salonId) {
+  return salonId ? `/services?salon_id=${salonId}` : '/services';
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLogged() || !Auth.isStaff()) { window.location.href = 'login.html'; return; }
   await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
@@ -36,7 +54,7 @@ async function loadMetrics() {
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const [allRdv, services] = await Promise.all([
       apiRequest('/appointments'),
-      apiRequest('/services'),
+      resolveManagerSalonId().then(salonId => apiRequest(servicesUrl(salonId))),
     ]);
     const todayRdv = allRdv.filter(r => r.start_at.startsWith(todayStr));
 
@@ -219,7 +237,8 @@ document.getElementById('btnClearFilter').addEventListener('click', () => {
 async function loadServices() {
   const tbody = document.getElementById('serviceTableBody');
   try {
-    const services = await apiRequest('/services');
+    const salonId = await resolveManagerSalonId();
+    const services = await apiRequest(servicesUrl(salonId));
     document.getElementById('metServices').textContent = services.length;
 
     if (!services.length) {

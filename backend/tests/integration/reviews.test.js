@@ -6,6 +6,13 @@ const jwt     = require('jsonwebtoken');
 
 let userId, otherUserId, serviceId, token, otherToken;
 
+// Seule suite à écrire dans reviews : un DELETE global en fin de suite évite
+// de laisser des lignes orphelines pour les runs suivants (cf. le beforeAll
+// de manager.test.js, qui recrée des appointments avec des ids recyclables).
+afterAll(async () => {
+  await db.execute('DELETE FROM reviews');
+});
+
 beforeEach(async () => {
   await db.execute('SET FOREIGN_KEY_CHECKS = 0');
   await db.execute('TRUNCATE TABLE reviews');

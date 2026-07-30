@@ -91,6 +91,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Défense contre des reviews orphelines d'un run interrompu (FK RESTRICT sur fk_reviews_appointment)
+  await db.execute('DELETE FROM reviews WHERE appointment_id IN (?, ?)', [appt1Id, appt2Id]);
   await db.execute('DELETE FROM appointments WHERE id IN (?, ?)', [appt1Id, appt2Id]);
   await db.execute('DELETE FROM availabilities WHERE stylist_id = ?', [stylist2Id]);
   await db.execute('DELETE FROM services WHERE id = ?', [service1Id]);

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../css/pages.css" />
   <link rel="stylesheet" href="../css/dashboard.css" />
+  <link rel="stylesheet" href="../css/reserver.css" />
 </head>
 <body>
 
@@ -96,6 +97,10 @@
 
       <!-- Panel Horaires -->
       <div class="dash-panel" id="panel-horaires" role="tabpanel">
+        <div class="card" id="horairesStylistCard" style="margin-bottom:1.5rem;" hidden>
+          <h2 style="font-size:1.1rem;margin-bottom:1rem;">Quel coiffeur ?</h2>
+          <div class="service-pick-grid" id="horairesStylistGrid" role="radiogroup"></div>
+        </div>
         <div id="horairesList">
           <div class="loader"><div class="spinner"></div> Chargement…</div>
         </div>

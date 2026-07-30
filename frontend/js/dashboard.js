@@ -19,7 +19,7 @@ function switchTab(tabId) {
   document.getElementById(`panel-${tabId}`).classList.add('active');
 
   if (tabId === 'clients')  loadAllRdv();
-  if (tabId === 'horaires') loadAvailabilities();
+  if (tabId === 'horaires') openHorairesTab();
 }
 
 document.querySelectorAll('.dash-tab').forEach(btn =>
@@ -326,11 +326,137 @@ document.getElementById('serviceModalClose').addEventListener('click', () =>
 // ── Horaires d'ouverture ──────────────────────────────────
 const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 
+// ── Sélection du coiffeur (onglet Horaires) ───────────────
+// Coiffeur actuellement affiché ; propagé sur les 5 appels availabilities ci-dessous.
+let currentStylistId = null;
+
+// Facteur commun à la grille de choix (copié-adapté de wireSelectableGrid dans reserver.js).
+function wireHorairesStylistGrid(grid, onSelect) {
+  grid.querySelectorAll('.service-pick-card').forEach(card => {
+    const select = () => {
+      grid.querySelectorAll('.service-pick-card').forEach(c => {
+        c.classList.remove('selected');
+        c.setAttribute('aria-checked', 'false');
+      });
+      card.classList.add('selected');
+      card.setAttribute('aria-checked', 'true');
+      onSelect(card);
+    };
+    card.addEventListener('click', select);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') select(); });
+  });
+}
+
+// Construit une carte de sélection de coiffeur en évitant toute injection HTML (données venant de l'API)
+function renderHorairesStylistCard(s) {
+  const card = document.createElement('div');
+  card.className = 'service-pick-card';
+  card.dataset.id = s.id;
+  card.setAttribute('role', 'radio');
+  card.setAttribute('aria-checked', 'false');
+  card.setAttribute('tabindex', '0');
+
+  const icon = document.createElement('div');
+  icon.className = 'service-pick-card__icon';
+  icon.textContent = '💇';
+
+  const name = document.createElement('p');
+  name.className = 'service-pick-card__name';
+  name.textContent = s.label;
+
+  card.append(icon, name);
+  return card;
+}
+
+// Résout les coiffeurs visibles par l'utilisateur connecté : un manager ne voit que
+// les coiffeurs de son salon (salon_id renvoyé par /auth/me) ; un admin voit ceux de
+// tous les salons actifs, avec le nom du salon dans le libellé seulement s'il y en a
+// plusieurs (sinon le libellé reste juste "Prénom Nom", identique au cas mono-salon).
+async function resolveHorairesStylists() {
+  if (Auth.getRole() === 'manager') {
+    const me = await apiRequest('/auth/me');
+    const stylists = await apiRequest(`/salons/${me.salon_id}/stylists`);
+    return stylists.map(s => ({ id: s.id, label: `${s.first_name} ${s.last_name}` }));
+  }
+
+  const salons = await apiRequest('/salons');
+  const multiSalon = salons.length > 1;
+  const perSalon = await Promise.all(salons.map(s => apiRequest(`/salons/${s.id}/stylists`)));
+
+  const stylists = [];
+  salons.forEach((salon, i) => {
+    perSalon[i].forEach(s => {
+      const name = `${s.first_name} ${s.last_name}`;
+      stylists.push({ id: s.id, label: multiSalon ? `${name} — ${salon.name}` : name });
+    });
+  });
+  return stylists;
+}
+
+// Affiche (ou masque) le sélecteur de coiffeur et résout currentStylistId : auto-
+// sélection silencieuse si un seul coiffeur au total (grille masquée, comportement
+// visuel identique à avant), grille visible avec premier coiffeur sélectionné par
+// défaut sinon. Retourne false si aucun coiffeur (grille vide) ou en cas d'erreur :
+// l'appelant doit alors s'abstenir d'appeler loadAvailabilities.
+async function loadHorairesStylist() {
+  const card = document.getElementById('horairesStylistCard');
+  const grid = document.getElementById('horairesStylistGrid');
+  const list = document.getElementById('horairesList');
+
+  let stylists;
+  try {
+    stylists = await resolveHorairesStylists();
+  } catch (err) {
+    currentStylistId = null;
+    card.hidden = true;
+    list.replaceChildren(renderErrorParagraph(err.message, '1rem 0'));
+    return false;
+  }
+
+  if (!stylists.length) {
+    currentStylistId = null;
+    card.hidden = true;
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state__icon">💇</div>
+        <h3>Aucun coiffeur</h3>
+        <p>Aucun coiffeur pour ce salon.</p>
+      </div>`;
+    return false;
+  }
+
+  if (stylists.length === 1) {
+    currentStylistId = stylists[0].id;
+    card.hidden = true;
+    grid.replaceChildren();
+    return true;
+  }
+
+  card.hidden = false;
+  grid.replaceChildren(...stylists.map(renderHorairesStylistCard));
+  wireHorairesStylistGrid(grid, c => {
+    currentStylistId = Number(c.dataset.id);
+    loadAvailabilities();
+  });
+
+  const first = grid.querySelector('.service-pick-card');
+  first.classList.add('selected');
+  first.setAttribute('aria-checked', 'true');
+  currentStylistId = Number(first.dataset.id);
+  return true;
+}
+
+// Point d'entrée de l'onglet Horaires : résout le coiffeur puis charge ses horaires.
+async function openHorairesTab() {
+  const ok = await loadHorairesStylist();
+  if (ok) loadAvailabilities();
+}
+
 async function loadAvailabilities() {
   const container = document.getElementById('horairesList');
   container.innerHTML = '<div class="loader"><div class="spinner"></div> Chargement…</div>';
   try {
-    const data    = await apiRequest('/availabilities');
+    const data    = await apiRequest(`/availabilities?stylist_id=${currentStylistId}`);
     const weekly  = data.filter(r => r.day_of_week !== null && !r.is_blocked);
     const blocked = data.filter(r => r.is_blocked && r.blocked_date);
     const byDay   = {};
@@ -397,7 +523,7 @@ async function loadAvailabilities() {
         const day = parseInt(btn.dataset.closeDay);
         if (!confirm(`Marquer ${DAY_NAMES[day]} comme fermé ?`)) return;
         try {
-          await apiRequest(`/availabilities/${day}`, { method: 'DELETE' });
+          await apiRequest(`/availabilities/${day}?stylist_id=${currentStylistId}`, { method: 'DELETE' });
           showToast(`${DAY_NAMES[day]} marqué comme fermé.`);
           loadAvailabilities();
         } catch (err) { showToast(err.message); }
@@ -423,7 +549,7 @@ async function loadAvailabilities() {
         await Promise.all(dates.map(d =>
           apiRequest('/availabilities/block', {
             method: 'POST',
-            body: JSON.stringify({ blocked_date: d }),
+            body: JSON.stringify({ blocked_date: d, stylist_id: currentStylistId }),
           })
         ));
         showToast(`${dates.length} jour(s) bloqué(s).`);
@@ -436,7 +562,7 @@ async function loadAvailabilities() {
         const date = btn.dataset.unblock;
         if (!confirm(`Débloquer le ${date} ?`)) return;
         try {
-          await apiRequest(`/availabilities/block/${date}`, { method: 'DELETE' });
+          await apiRequest(`/availabilities/block/${date}?stylist_id=${currentStylistId}`, { method: 'DELETE' });
           showToast('Date débloquée.');
           loadAvailabilities();
         } catch (err) { showToast(err.message); }
@@ -555,7 +681,7 @@ document.getElementById('horairesForm').addEventListener('submit', async e => {
   try {
     await apiRequest(`/availabilities/${day}`, {
       method: 'PUT',
-      body: JSON.stringify({ open_time, close_time }),
+      body: JSON.stringify({ open_time, close_time, stylist_id: currentStylistId }),
     });
     showToast(`Horaires de ${DAY_NAMES[day]} enregistrés.`);
     document.getElementById('horairesModal').classList.add('hidden');

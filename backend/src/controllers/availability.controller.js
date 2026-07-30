@@ -47,7 +47,8 @@ async function getAll(req, res) {
     if (error) return res.status(error.status).json(error.body);
 
     const [rows] = await db.execute(
-      `SELECT id, day_of_week, open_time, close_time, is_blocked, blocked_date
+      `SELECT id, day_of_week, open_time, close_time, is_blocked,
+              DATE_FORMAT(blocked_date, '%Y-%m-%d') AS blocked_date
        FROM availabilities
        WHERE stylist_id = ? AND (blocked_date IS NULL OR blocked_date >= CURDATE())
        ORDER BY day_of_week ASC, blocked_date ASC`,

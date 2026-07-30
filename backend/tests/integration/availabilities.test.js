@@ -109,6 +109,43 @@ describe('POST /api/availabilities/block + DELETE /block/:date', () => {
 
 });
 
+// Date à J+N formatée YYYY-MM-DD à partir des composants locaux (jamais
+// toISOString(), qui convertit en UTC et réintroduirait le décalage que ce
+// test est censé détecter).
+function futureDateStr(daysFromNow) {
+  const d = new Date();
+  d.setDate(d.getDate() + daysFromNow);
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+describe('GET /api/availabilities — format de blocked_date', () => {
+
+  // Non-régression du décalage UTC : mysql2 renvoie blocked_date comme un objet
+  // Date (minuit local), qu'Express sérialise via toISOString() → recule d'un
+  // jour en été (UTC+2). Le fix (DATE_FORMAT côté SQL) doit renvoyer la date
+  // saisie telle quelle, sans passer par un objet Date.
+  it('renvoie blocked_date au format YYYY-MM-DD exact, sans décalage de fuseau horaire', async () => {
+    const futureDate = futureDateStr(45);
+
+    const blockRes = await request(app)
+      .post('/api/availabilities/block')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ blocked_date: futureDate });
+    expect(blockRes.status).toBe(201);
+
+    const getRes = await request(app).get('/api/availabilities');
+    expect(getRes.status).toBe(200);
+
+    const blockedRow = getRes.body.find(r => r.is_blocked);
+    expect(blockedRow).toBeDefined();
+    expect(blockedRow.blocked_date).toBe(futureDate);
+  });
+
+});
+
 // ── Multi-coiffeur (stylist_id) ──────────────────────────────────────────
 // Un second stylist de test, rattaché au salon 1 seedé. Jamais de TRUNCATE sur
 // salons/stylists : le stylist 1 seedé est la cible du DEFAULT 1 des autres

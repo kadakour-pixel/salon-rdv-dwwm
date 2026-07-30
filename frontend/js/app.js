@@ -10,6 +10,7 @@ const Auth = {
   getRole()   { return localStorage.getItem('role'); },
   isLogged()  { return !!this.getToken(); },
   isAdmin()   { return this.getRole() === 'admin'; },
+  isStaff()   { return this.getRole() === 'admin' || this.getRole() === 'manager'; },
 
   save(token, role) {
     localStorage.setItem('token', token);
@@ -76,7 +77,7 @@ function initNavbar() {
 
   // Injection des liens selon l'état de connexion
   if (Auth.isLogged()) {
-    actions.innerHTML = Auth.isAdmin()
+    actions.innerHTML = Auth.isStaff()
       ? `<a href="${prefix}dashboard.html" class="btn btn-outline">Dashboard</a>
          <button class="btn btn-primary" id="logoutBtn">Déconnexion</button>`
       : `<a href="${prefix}mes-rdv.html" class="btn btn-outline">Mes RDV</a>

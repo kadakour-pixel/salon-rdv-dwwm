@@ -1,12 +1,12 @@
 // js/profil.js — Modification du profil client
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Page réservée aux clients — les admins ont le dashboard, pas besoin de profil
+  // Page réservée aux clients — admins et managers ont le dashboard, pas besoin de profil
   if (!Auth.isLogged()) {
     window.location.href = 'login.html';
     return;
   }
-  if (Auth.isAdmin()) {
+  if (Auth.isStaff()) {
     window.location.href = 'dashboard.html';
     return;
   }

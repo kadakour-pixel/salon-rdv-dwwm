@@ -4,7 +4,7 @@ let agendaDate = new Date();
 agendaDate.setHours(0, 0, 0, 0);
 
 document.addEventListener('DOMContentLoaded', async () => {
-  if (!Auth.isLogged() || !Auth.isAdmin()) { window.location.href = 'login.html'; return; }
+  if (!Auth.isLogged() || !Auth.isStaff()) { window.location.href = 'login.html'; return; }
   await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
 });
 

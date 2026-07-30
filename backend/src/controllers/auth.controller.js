@@ -112,7 +112,7 @@ async function login(req, res) {
 async function getMe(req, res) {
   try {
     const [[user]] = await db.execute(
-      'SELECT id, first_name, last_name, email, role FROM users WHERE id = ?',
+      'SELECT id, first_name, last_name, email, role, salon_id FROM users WHERE id = ?',
       [req.user.id]
     );
     if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });

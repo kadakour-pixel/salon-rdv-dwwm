@@ -65,7 +65,7 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
     Auth.save(data.token, data.role);
     showAlert('loginAlert', 'Connexion réussie, redirection…', 'success');
     setTimeout(() => {
-      window.location.href = data.role === 'admin' ? 'dashboard.html' : 'mes-rdv.html';
+      window.location.href = Auth.isStaff() ? 'dashboard.html' : 'mes-rdv.html';
     }, 800);
   } catch (err) {
     showAlert('loginAlert', err.message || 'Identifiants incorrects.');

@@ -139,6 +139,24 @@ describe('POST /api/auth/login', () => {
 
 });
 
+describe('GET /api/auth/me', () => {
+
+  // ── Cas 1 : salon_id exposé (nécessaire au dashboard manager, lots B/C) ─
+  it('retourne salon_id (null pour un client sans salon affecté)', async () => {
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ email: TEST_USER.email, password: TEST_USER.password });
+
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${login.body.token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('salon_id', null);
+  });
+
+});
+
 describe('GET /api/auth/verify', () => {
 
   // ── Cas 1 : token valide ────────────────────────────────────────

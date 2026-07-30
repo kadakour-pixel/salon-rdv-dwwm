@@ -219,3 +219,16 @@ describe('Rôle manager — salon_id NULL', () => {
   });
 
 });
+
+describe('Rôle manager — GET /api/auth/me', () => {
+
+  it('renvoie le salon_id de la fixture', async () => {
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${managerToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.salon_id).toBe(salon2Id);
+  });
+
+});

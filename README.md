@@ -25,6 +25,12 @@ Salon Élégance permet aux clients de réserver un rendez-vous en ligne 24h/24,
 - Vue globale de tous les rendez-vous avec filtre par date
 - Métriques en temps réel (RDV du jour, de la semaine, annulations)
 
+### Rôles utilisateurs
+
+- **Client** — réserve et gère ses propres rendez-vous.
+- **Manager** — gère un salon précis (`salon_id` porté par son compte) : agenda, prestations et horaires scopés à ce seul salon.
+- **Admin** — gère l'application dans son ensemble, tous salons confondus, sans `salon_id` propre.
+
 ---
 
 ## 🛠 Stack technique
@@ -251,7 +257,7 @@ Password : Admin1234!   ← À changer impérativement en production
 
 - Les mots de passe sont hashés avec **bcrypt** (coût 10)
 - L'authentification repose sur des **JWT** signés, expirés après 7 jours
-- Le middleware vérifie le rôle (`client` ou `admin`) sur chaque route protégée
+- Le middleware vérifie le rôle (`client`, `manager` ou `admin`) sur chaque route protégée
 - Les prestations supprimées sont **désactivées logiquement** (`is_active = 0`) pour préserver l'historique des RDV
 - La détection des conflits de créneaux est effectuée côté serveur avant chaque réservation
 

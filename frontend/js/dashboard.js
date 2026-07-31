@@ -44,6 +44,7 @@ function resolveAgendaScope() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLogged() || !Auth.isStaff()) { window.location.href = 'login.html'; return; }
+  document.querySelector('.dash-sidebar__logo small').textContent = Auth.isAdmin() ? 'Administration' : 'Mon salon';
   await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
 });
 

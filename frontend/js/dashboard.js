@@ -21,6 +21,27 @@ function servicesUrl(salonId) {
   return salonId ? `/services?salon_id=${salonId}` : '/services';
 }
 
+// ── Résolution du scope d'affichage de l'agenda (coiffeur/salon) ─
+// Mémoïsée. showSalon : admin uniquement (un manager ne voit que son propre
+// salon, donc jamais utile pour lui) et seulement si plusieurs salons actifs
+// existent. showStylist : liste des coiffeurs déjà scopée par resolveHorairesStylists
+// (son propre salon pour un manager, tous salons actifs pour un admin).
+let agendaScopePromise = null;
+
+function resolveAgendaScope() {
+  if (!agendaScopePromise) {
+    agendaScopePromise = resolveManagerSalonId().then(async managerSalonId => {
+      const stylists = await resolveHorairesStylists();
+      const showStylist = stylists.length > 1;
+      if (managerSalonId !== null) return { showSalon: false, showStylist };
+
+      const salons = await apiRequest('/salons');
+      return { showSalon: salons.length > 1, showStylist };
+    });
+  }
+  return agendaScopePromise;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLogged() || !Auth.isStaff()) { window.location.href = 'login.html'; return; }
   await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
@@ -106,10 +127,12 @@ async function loadAgenda() {
       return;
     }
 
+    const scope = await resolveAgendaScope();
     list.replaceChildren(...rdvs.map(r => renderAgendaItem(r, {
       timeLabel:    `${new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} – ${new Date(r.end_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
       serviceLabel: `${r.service_name} · ${r.duration_minutes} min`,
       cancelAttr:   'data-cancel-rdv',
+      ...scope,
     })));
 
     list.querySelectorAll('[data-cancel-rdv]').forEach(btn =>
@@ -129,7 +152,7 @@ async function loadAgenda() {
 }
 
 // Construit une ligne d'agenda (agenda du jour ou liste "tous les RDV") en évitant toute injection HTML
-function renderAgendaItem(r, { timeLabel, serviceLabel, cancelAttr }) {
+function renderAgendaItem(r, { timeLabel, serviceLabel, cancelAttr, showStylist, showSalon }) {
   const statusLabel = r.status === 'confirmed' ? 'Confirmé' : r.status === 'cancelled' ? 'Annulé' : 'En attente';
 
   const item = document.createElement('div');
@@ -148,6 +171,19 @@ function renderAgendaItem(r, { timeLabel, serviceLabel, cancelAttr }) {
   serviceP.className = 'agenda-item__service';
   serviceP.textContent = serviceLabel;
   info.append(clientP, serviceP);
+
+  if (showStylist) {
+    const stylistP = document.createElement('p');
+    stylistP.className = 'agenda-item__service';
+    stylistP.textContent = r.stylist_name || '—';
+    info.appendChild(stylistP);
+  }
+  if (showSalon) {
+    const salonP = document.createElement('p');
+    salonP.className = 'agenda-item__service';
+    salonP.textContent = r.salon_name || '—';
+    info.appendChild(salonP);
+  }
 
   const right = document.createElement('div');
   right.style.cssText = 'display:flex;align-items:center;gap:.5rem;';
@@ -205,10 +241,12 @@ async function loadAllRdv(dateFilter = '') {
       return;
     }
 
+    const scope = await resolveAgendaScope();
     list.replaceChildren(...rdvs.map(r => renderAgendaItem(r, {
       timeLabel:    `${new Date(r.start_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} ${new Date(r.start_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
       serviceLabel: r.service_name,
       cancelAttr:   'data-cancel-all',
+      ...scope,
     })));
 
     list.querySelectorAll('[data-cancel-all]').forEach(btn =>

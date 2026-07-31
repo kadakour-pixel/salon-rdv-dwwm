@@ -219,10 +219,14 @@ async function getAll(req, res) {
     let query = `
       SELECT a.id, a.start_at, a.end_at, a.status,
              u.first_name, u.last_name, u.email,
-             s.name AS service_name, s.duration_minutes
+             s.name AS service_name, s.duration_minutes,
+             CONCAT(st.first_name, ' ', st.last_name) AS stylist_name,
+             sal.name AS salon_name
       FROM appointments a
-      JOIN users    u ON u.id = a.user_id
-      JOIN services s ON s.id = a.service_id
+      JOIN users    u   ON u.id   = a.user_id
+      JOIN services s   ON s.id   = a.service_id
+      LEFT JOIN stylists st  ON st.id  = a.stylist_id
+      LEFT JOIN salons   sal ON sal.id = a.salon_id
     `;
     const conditions = [];
     const params = [];

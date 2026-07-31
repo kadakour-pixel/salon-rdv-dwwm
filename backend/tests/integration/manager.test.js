@@ -204,6 +204,21 @@ describe('Rôle manager — liste des RDV (GET /api/appointments)', () => {
     expect(res.body.some(a => a.id === appt2Id)).toBe(true);
   });
 
+  it('enrichit chaque RDV avec le nom du coiffeur et du salon (LEFT JOIN stylists/salons)', async () => {
+    const res = await request(app)
+      .get('/api/appointments')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    const row1 = res.body.find(a => a.id === appt1Id);
+    const row2 = res.body.find(a => a.id === appt2Id);
+
+    expect(row1.stylist_name).toBe('Équipe Salon Élégance');
+    expect(row1.salon_name).toBe('Salon Élégance');
+
+    expect(row2.stylist_name).toBe('Coiffeur DuManager');
+    expect(row2.salon_name).toBe('Salon Test Manager');
+  });
+
 });
 
 describe('Rôle manager — salon_id NULL', () => {

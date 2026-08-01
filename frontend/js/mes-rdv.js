@@ -100,9 +100,10 @@ function renderRdvCard(rdv) {
   serviceP.textContent = rdv.service_name;
   const metaP = document.createElement('p');
   metaP.className = 'rdv-card__meta';
-  // stylist_name peut être absent (LEFT JOIN côté API si le coiffeur a été désactivé)
+  // stylist_name/salon_name peuvent être absents (LEFT JOIN côté API si le coiffeur/salon a été désactivé)
   const stylistPart = rdv.stylist_name ? ` · avec ${rdv.stylist_name}` : '';
-  metaP.textContent = `${time}${stylistPart} · ${rdv.price} €`;
+  const salonPart = rdv.salon_name ? ` · ${rdv.salon_name}` : '';
+  metaP.textContent = `${time}${stylistPart}${salonPart} · ${rdv.price} €`;
   infoDiv.append(serviceP, metaP);
 
   const actionsDiv = document.createElement('div');

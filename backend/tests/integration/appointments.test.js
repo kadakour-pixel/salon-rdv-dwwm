@@ -238,3 +238,26 @@ describe('POST /api/appointments', () => {
   });
 
 });
+
+describe('GET /api/appointments/me', () => {
+
+  // ── Miroir de getAll (Lot D) : stylist_name et salon_name via LEFT JOIN ──
+  it('renvoie stylist_name et salon_name pour le RDV du client', async () => {
+    const created = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ service_id: serviceId, start_at: `${DATE} 10:00:00` });
+
+    expect(created.status).toBe(201);
+
+    const res = await request(app)
+      .get('/api/appointments/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const row = res.body.find(r => r.id === created.body.id);
+    expect(row.stylist_name).toBe('Équipe Salon Élégance');
+    expect(row.salon_name).toBe('Salon Élégance');
+  });
+
+});

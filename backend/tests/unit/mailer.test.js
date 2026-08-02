@@ -8,7 +8,7 @@ jest.mock('nodemailer', () => ({
 }));
 
 const nodemailer = require('nodemailer');
-const { sendVerificationEmail, sendReminderEmail } = require('../../src/utils/mailer');
+const { sendVerificationEmail, sendInvitationEmail, sendReminderEmail } = require('../../src/utils/mailer');
 
 // mailer.js appelle createTransport() une seule fois au chargement du module :
 // le mock à utiliser dans les tests est donc celui retourné par le premier appel.
@@ -52,6 +52,16 @@ describe('mailer — échappement HTML', () => {
 
     const { html } = sendMailMock.mock.calls[0][0];
     expect(html).toContain('http://localhost:3001/api/auth/verify?token=abcdef0123456789');
+  });
+
+  it("le lien d'invitation manager pointe vers le FRONT (FRONTEND_URL), pas vers APP_URL", async () => {
+    await sendInvitationEmail('manager@salon.fr', 'abcdef0123456789', 'Camille', 'Salon Test');
+
+    const { html } = sendMailMock.mock.calls[0][0];
+    const [, link] = html.match(/href="([^"]+)"/);
+
+    expect(link.startsWith(process.env.FRONTEND_URL)).toBe(true);
+    expect(link).toContain('/pages/definir-mot-de-passe.html?token=abcdef0123456789');
   });
 
 });

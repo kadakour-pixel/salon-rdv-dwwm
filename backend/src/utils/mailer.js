@@ -41,7 +41,7 @@ async function sendVerificationEmail(to, token) {
 
 // Envoie le mail d'invitation à un manager (définition de son mot de passe)
 async function sendInvitationEmail(to, token, firstName, salonName) {
-  const link = `${process.env.APP_URL}/pages/definir-mot-de-passe.html?token=${token}`;
+  const link = `${process.env.FRONTEND_URL}/pages/definir-mot-de-passe.html?token=${token}`;
   const safeLink = escapeHtml(link);
   await transporter.sendMail({
     from:    process.env.SMTP_USER,

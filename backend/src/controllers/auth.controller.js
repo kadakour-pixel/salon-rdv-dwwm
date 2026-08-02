@@ -178,7 +178,7 @@ async function verifyEmail(req, res) {
       [user.id]
     );
 
-    return res.redirect(`${process.env.APP_URL}/pages/login.html?verified=1`);
+    return res.redirect(`${process.env.FRONTEND_URL}/pages/login.html?verified=1`);
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Erreur serveur' });

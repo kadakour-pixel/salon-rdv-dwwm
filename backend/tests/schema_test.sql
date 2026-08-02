@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS salon_rdv_test
 USE salon_rdv_test;
 
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS action_tokens;
 DROP TABLE IF EXISTS reviews;
 DROP TABLE IF EXISTS appointments;
 DROP TABLE IF EXISTS availabilities;
@@ -49,6 +50,20 @@ CREATE TABLE users (
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (salon_id) REFERENCES salons(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE action_tokens (
+  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT UNSIGNED NOT NULL,
+  salon_id   INT UNSIGNED NULL,
+  type       ENUM('invite_manager','password_reset') NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  used_at    DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
+  FOREIGN KEY (salon_id) REFERENCES salons(id),
+  UNIQUE KEY uq_token_hash (token_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE services (

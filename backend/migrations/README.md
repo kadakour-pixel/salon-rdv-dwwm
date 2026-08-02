@@ -19,6 +19,7 @@ Ordre d'application : `001` → `002` → `003` → `004` → `005`.
 | 003 | Oui | Non |
 | 004 | Oui | Non |
 | 005 | Oui (29/07/2026) | Non |
+| 006 | Oui (02/08/2026) | Non |
 
 ## Note
 

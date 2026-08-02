@@ -330,6 +330,47 @@ async function inviteManager(req, res) {
   }
 }
 
+// POST /api/auth/set-password — public (le token authentifie, pas un JWT)
+async function setPassword(req, res) {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    return res.status(400).json({ error: 'Token et mot de passe requis' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Le mot de passe doit faire au moins 8 caractères' });
+  }
+
+  try {
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const [[actionToken]] = await db.execute(
+      `SELECT id, user_id FROM action_tokens
+       WHERE token_hash = ? AND type = 'invite_manager' AND used_at IS NULL AND expires_at > NOW()`,
+      [tokenHash]
+    );
+    // Message générique : ne distingue pas token inconnu / expiré / déjà consommé
+    if (!actionToken) {
+      return res.status(400).json({ error: 'Lien invalide ou expiré' });
+    }
+
+    const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+
+    // Pas de transaction : aucun pattern beginTransaction/getConnection
+    // ailleurs dans le projet, on n'en introduit pas pour ce lot. UPDATE
+    // users d'abord, puis action_tokens : une panne entre les deux laisse
+    // le mot de passe posé mais le token encore actif (ré-utilisable une
+    // fois) — atomicité non garantie, backlog éventuel.
+    await db.execute('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash, actionToken.user_id]);
+    await db.execute('UPDATE action_tokens SET used_at = NOW() WHERE id = ?', [actionToken.id]);
+
+    return res.json({ message: 'Mot de passe défini. Vous pouvez maintenant vous connecter.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
 // Génération du token JWT
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -337,4 +378,4 @@ function signToken(payload) {
   });
 }
 
-module.exports = { register, login, getMe, updateMe, verifyEmail, resendVerification, inviteManager };
+module.exports = { register, login, getMe, updateMe, verifyEmail, resendVerification, inviteManager, setPassword };

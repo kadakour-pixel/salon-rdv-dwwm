@@ -262,3 +262,98 @@ describe('Ré-invitation d\'un manager déjà invité', () => {
   });
 
 });
+
+describe('POST /api/auth/set-password', () => {
+
+  // Invite un manager via le flux existant et récupère le token CLAIR via le
+  // mock sendInvitationEmail (la base ne stocke jamais que le SHA-256).
+  async function inviteAndGetToken(email) {
+    const res = await request(app)
+      .post('/api/auth/invite-manager')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ email, first_name: 'SetPwd', last_name: 'Jest', salon_id: activeSalonId });
+
+    createdUserIds.push(res.body.id);
+    const [, token] = mailer.sendInvitationEmail.mock.calls[0];
+    return { userId: res.body.id, token };
+  }
+
+  it('définit le mot de passe, consomme le token, et permet la connexion (bout-en-bout)', async () => {
+    const { userId, token } = await inviteAndGetToken('set-password-ok-jest@salon.fr');
+
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, password: 'nouveauMdp123' });
+
+    expect(res.status).toBe(200);
+
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'set-password-ok-jest@salon.fr', password: 'nouveauMdp123' });
+
+    expect(login.status).toBe(200);
+    expect(login.body).toHaveProperty('token');
+    expect(login.body.role).toBe('manager');
+
+    const [[actionToken]] = await db.execute(
+      `SELECT used_at FROM action_tokens WHERE user_id = ? AND type = 'invite_manager'`,
+      [userId]
+    );
+    expect(actionToken.used_at).not.toBeNull();
+  });
+
+  it('retourne 400 pour un token inexistant', async () => {
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token: 'a'.repeat(64), password: 'nouveauMdp123' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne 400 pour un token expiré', async () => {
+    const { userId, token } = await inviteAndGetToken('set-password-expire-jest@salon.fr');
+
+    await db.execute(
+      `UPDATE action_tokens SET expires_at = DATE_SUB(NOW(), INTERVAL 1 HOUR) WHERE user_id = ? AND type = 'invite_manager'`,
+      [userId]
+    );
+
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, password: 'nouveauMdp123' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne 400 pour un token déjà consommé', async () => {
+    const { token } = await inviteAndGetToken('set-password-consomme-jest@salon.fr');
+
+    const first = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, password: 'nouveauMdp123' });
+    expect(first.status).toBe(200);
+
+    const second = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token, password: 'autreMdp456' });
+
+    expect(second.status).toBe(400);
+  });
+
+  it('retourne 400 si le mot de passe est trop court', async () => {
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ token: 'a'.repeat(64), password: 'court' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne 400 si token ou password est manquant', async () => {
+    const res = await request(app)
+      .post('/api/auth/set-password')
+      .send({ password: 'nouveauMdp123' });
+
+    expect(res.status).toBe(400);
+  });
+
+});

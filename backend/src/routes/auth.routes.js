@@ -1,10 +1,10 @@
 // src/routes/auth.routes.js
 const express = require('express');
 const router  = express.Router();
-const { register, login, getMe, updateMe, verifyEmail, resendVerification } = require('../controllers/auth.controller');
+const { register, login, getMe, updateMe, verifyEmail, resendVerification, inviteManager } = require('../controllers/auth.controller');
 // ⚠️ Le middleware exporté par auth.middleware.js s'appelle "authenticate"
 //    (et non "verifyToken", qui était undefined → plantage au démarrage).
-const { authenticate } = require('../middlewares/auth.middleware');
+const { authenticate, requireRole } = require('../middlewares/auth.middleware');
 
 // POST /api/auth/register
 router.post('/register', register);
@@ -18,5 +18,7 @@ router.post('/resend-verification', resendVerification);
 router.get('/me', authenticate, getMe);
 // PUT /api/auth/me  — modification du profil
 router.put('/me', authenticate, updateMe);
+// POST /api/auth/invite-manager — admin : invite un manager sur un salon
+router.post('/invite-manager', authenticate, requireRole('admin'), inviteManager);
 
 module.exports = router;

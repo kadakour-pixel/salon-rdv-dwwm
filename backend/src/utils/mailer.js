@@ -39,6 +39,24 @@ async function sendVerificationEmail(to, token) {
   });
 }
 
+// Envoie le mail d'invitation à un manager (définition de son mot de passe)
+async function sendInvitationEmail(to, token, firstName, salonName) {
+  const link = `${process.env.APP_URL}/pages/definir-mot-de-passe.html?token=${token}`;
+  const safeLink = escapeHtml(link);
+  await transporter.sendMail({
+    from:    process.env.SMTP_USER,
+    to,
+    subject: 'Invitation à gérer votre salon — Salon Élégance',
+    html: `
+      <p>Bonjour ${escapeHtml(firstName)},</p>
+      <p>Vous avez été invité(e) à gérer le salon <strong>${escapeHtml(salonName)}</strong> sur Salon Élégance.</p>
+      <p>Définissez votre mot de passe en cliquant sur le lien ci-dessous :</p>
+      <p><a href="${safeLink}">${safeLink}</a></p>
+      <p>Ce lien expire dans 48 heures.</p>
+    `,
+  });
+}
+
 // Envoie le mail de rappel 24h avant un RDV confirmé
 async function sendReminderEmail(to, { firstName, serviceName, startAtFr }) {
   await transporter.sendMail({
@@ -53,4 +71,4 @@ async function sendReminderEmail(to, { firstName, serviceName, startAtFr }) {
   });
 }
 
-module.exports = { sendVerificationEmail, sendReminderEmail };
+module.exports = { sendVerificationEmail, sendInvitationEmail, sendReminderEmail };

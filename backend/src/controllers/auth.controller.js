@@ -9,6 +9,8 @@ const mailer = require('../utils/mailer');
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // Délai minimum entre deux renvois du mail de vérification
 const RESEND_COOLDOWN_MS = 5 * 60 * 1000; // 5 min
+// Durée de validité du token d'invitation manager
+const INVITE_TTL_MS = 48 * 60 * 60 * 1000; // 48h
 
 // Coût du hashage bcrypt : 10 = bon compromis sécurité/performance (~100ms par hash)
 const SALT_ROUNDS = 10;
@@ -231,6 +233,103 @@ async function resendVerification(req, res) {
   }
 }
 
+// POST /api/auth/invite-manager — admin
+async function inviteManager(req, res) {
+  const { email, first_name, last_name, salon_id } = req.body;
+
+  if (!email || !first_name || !last_name || !salon_id) {
+    return res.status(400).json({ error: 'Champs obligatoires : email, first_name, last_name, salon_id' });
+  }
+  if (!EMAIL_REGEX.test(email)) {
+    return res.status(400).json({ error: 'Format d\'email invalide' });
+  }
+
+  try {
+    const [[salon]] = await db.execute(
+      'SELECT id, name FROM salons WHERE id = ? AND is_active = 1',
+      [salon_id]
+    );
+    if (!salon) {
+      return res.status(404).json({ error: 'Salon introuvable' });
+    }
+
+    const [[existingUser]] = await db.execute(
+      'SELECT id, role FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (existingUser && existingUser.role !== 'manager') {
+      return res.status(409).json({ error: 'Email déjà utilisé' });
+    }
+
+    let userId;
+
+    if (existingUser) {
+      // Manager existant : on ne recrée jamais le compte, on cherche son
+      // éventuelle invitation encore active (non consommée).
+      const [[activeToken]] = await db.execute(
+        `SELECT id, created_at FROM action_tokens
+         WHERE user_id = ? AND type = 'invite_manager' AND used_at IS NULL
+         ORDER BY created_at DESC LIMIT 1`,
+        [existingUser.id]
+      );
+
+      if (!activeToken) {
+        return res.status(409).json({ error: 'Invitation déjà utilisée' });
+      }
+
+      const elapsedSinceLastToken = Date.now() - activeToken.created_at.getTime();
+      if (elapsedSinceLastToken < RESEND_COOLDOWN_MS) {
+        return res.status(429).json({ error: 'Merci de patienter avant de renvoyer une invitation' });
+      }
+
+      await db.execute(
+        `DELETE FROM action_tokens WHERE user_id = ? AND type = 'invite_manager' AND used_at IS NULL`,
+        [existingUser.id]
+      );
+      // Le salon proposé peut avoir changé entre deux invitations.
+      await db.execute('UPDATE users SET salon_id = ? WHERE id = ?', [salon_id, existingUser.id]);
+
+      userId = existingUser.id;
+    } else {
+      // Mot de passe jeté : il ne sera jamais utilisable, set-password (lot
+      // ultérieur) le remplacera avant toute connexion possible.
+      const throwawayPassword = crypto.randomBytes(32).toString('hex');
+      const password_hash = await bcrypt.hash(throwawayPassword, SALT_ROUNDS);
+
+      const [result] = await db.execute(
+        `INSERT INTO users (email, password_hash, first_name, last_name, role, salon_id, email_verified)
+         VALUES (?, ?, ?, ?, 'manager', ?, 1)`,
+        [email, password_hash, first_name, last_name, salon_id]
+      );
+      userId = result.insertId;
+    }
+
+    const inviteToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(inviteToken).digest('hex');
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+
+    await db.execute(
+      `INSERT INTO action_tokens (user_id, salon_id, type, token_hash, expires_at)
+       VALUES (?, ?, 'invite_manager', ?, ?)`,
+      [userId, salon_id, tokenHash, expiresAt]
+    );
+
+    // L'échec d'envoi du mail ne doit pas empêcher l'invitation : l'admin
+    // pourra la renvoyer une fois le cooldown écoulé.
+    try {
+      await mailer.sendInvitationEmail(email, inviteToken, first_name, salon.name);
+    } catch (mailErr) {
+      console.error('Échec envoi mail d\'invitation :', mailErr);
+    }
+
+    return res.status(201).json({ id: userId, email, salon_id });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
 // Génération du token JWT
 function signToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -238,4 +337,4 @@ function signToken(payload) {
   });
 }
 
-module.exports = { register, login, getMe, updateMe, verifyEmail, resendVerification };
+module.exports = { register, login, getMe, updateMe, verifyEmail, resendVerification, inviteManager };

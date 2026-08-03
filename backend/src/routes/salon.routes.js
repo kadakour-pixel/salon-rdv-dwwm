@@ -19,5 +19,6 @@ router.post('/',  authenticate, requireRole('admin'), ctrl.createSalon);  // Cr√
 router.put('/:id', authenticate, requireRole('admin'), ctrl.updateSalon); // Modifier un salon
 router.post('/:id/status', authenticate, requireRole('admin'), ctrl.setSalonStatus); // Activer/d√©sactiver un salon
 router.post('/:id/archive', authenticate, requireRole('admin'), ctrl.archiveSalon); // Archiver un salon (terminal)
+router.delete('/:id', authenticate, requireRole('admin'), ctrl.deleteSalon); // Supprimer un salon vierge
 
 module.exports = router;

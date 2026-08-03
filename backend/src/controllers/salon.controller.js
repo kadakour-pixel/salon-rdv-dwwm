@@ -306,4 +306,59 @@ async function archiveSalon(req, res) {
   }
 }
 
-module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon, setSalonStatus, archiveSalon };
+// DELETE /api/salons/:id — admin
+// DELETE physique réservé au salon vierge (erreur de saisie) : tout salon
+// ayant vécu s'archive, jamais ne se supprime — les RDV passés sont de
+// l'historique métier.
+async function deleteSalon(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+
+  try {
+    const [[salon]] = await db.execute('SELECT id FROM salons WHERE id = ?', [id]);
+    if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
+
+    // Une seule requête, 5 sous-requêtes COUNT en colonnes séparées.
+    // action_tokens compté TOUS TYPES (pas seulement invite_manager) : un
+    // token password_reset rattaché au salon bloque aussi la suppression.
+    const [[row]] = await db.execute(
+      `SELECT
+         (SELECT COUNT(*) FROM stylists      WHERE salon_id = ?) AS stylists,
+         (SELECT COUNT(*) FROM services      WHERE salon_id = ?) AS services,
+         (SELECT COUNT(*) FROM users         WHERE salon_id = ?) AS users,
+         (SELECT COUNT(*) FROM action_tokens WHERE salon_id = ?) AS action_tokens,
+         (SELECT COUNT(*) FROM appointments a
+            JOIN stylists st ON st.id = a.stylist_id
+            WHERE st.salon_id = ?) AS appointments`,
+      [id, id, id, id, id]
+    );
+
+    const dependencies = {};
+    for (const key of ['stylists', 'services', 'users', 'action_tokens', 'appointments']) {
+      const count = Number(row[key]);
+      if (count > 0) dependencies[key] = count;
+    }
+
+    if (Object.keys(dependencies).length > 0) {
+      return res.status(409).json({
+        error: 'Salon non supprimable',
+        dependencies,
+        suggestion: 'archive',
+      });
+    }
+
+    // Vérification applicative doublée par les FK en RESTRICT (aucune n'est
+    // en CASCADE, vérifié) : si un cas nous échappait, MariaDB refuserait le
+    // DELETE au lieu de détruire en cascade. Le catch renvoie alors une 500,
+    // comportement acceptable pour un cas qui ne devrait jamais survenir.
+    await db.execute('DELETE FROM salons WHERE id = ?', [id]);
+    res.json({ id, deleted: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon, setSalonStatus, archiveSalon, deleteSalon };

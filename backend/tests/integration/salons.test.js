@@ -909,3 +909,228 @@ describe('POST /api/salons/:id/archive', () => {
   });
 
 });
+
+describe('DELETE /api/salons/:id', () => {
+
+  // Local à ce describe (même pattern que le describe archive).
+  const createdSalonIds = [];
+
+  afterAll(async () => {
+    if (createdSalonIds.length > 0) {
+      // Défensif, même logique que le describe archive. Les salons déjà
+      // supprimés avec succès (test "vierge") sont simplement ignorés par
+      // le WHERE id IN (...), sans erreur.
+      await db.execute(
+        `DELETE FROM action_tokens WHERE salon_id IN (${createdSalonIds.map(() => '?').join(',')})`,
+        createdSalonIds
+      );
+      await db.execute(
+        `DELETE FROM salons WHERE id IN (${createdSalonIds.map(() => '?').join(',')})`,
+        createdSalonIds
+      );
+    }
+  });
+
+  it('retourne 401 sans token', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete 401', '1 rue Delete', '0600000030']
+    );
+    createdSalonIds.push(salon.insertId);
+
+    const res = await request(app).delete(`/api/salons/${salon.insertId}`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it('retourne 403 avec un token client', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete 403', '2 rue Delete', '0600000031']
+    );
+    createdSalonIds.push(salon.insertId);
+
+    const res = await request(app)
+      .delete(`/api/salons/${salon.insertId}`)
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('retourne 404 pour un salon inexistant', async () => {
+    const res = await request(app)
+      .delete('/api/salons/999999')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('supprime un salon vierge : absent de la base apres', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete Vierge', '3 rue Delete', '0600000032']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const res = await request(app)
+      .delete(`/api/salons/${salonId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: salonId, deleted: true });
+
+    const [rows] = await db.execute('SELECT id FROM salons WHERE id = ?', [salonId]);
+    expect(rows.length).toBe(0);
+  });
+
+  it('retourne 409 avec dependencies.stylists = 1 si le salon a un stylist ; le salon existe toujours apres', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete Stylist', '4 rue Delete', '0600000033']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const [stylist] = await db.execute(
+      'INSERT INTO stylists (salon_id, first_name, last_name) VALUES (?, ?, ?)',
+      [salonId, 'Test', 'Delete']
+    );
+    const stylistId = stylist.insertId;
+
+    try {
+      const res = await request(app)
+        .delete(`/api/salons/${salonId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body).toMatchObject({
+        error: 'Salon non supprimable',
+        suggestion: 'archive',
+        dependencies: { stylists: 1 },
+      });
+
+      const [[row]] = await db.execute('SELECT id FROM salons WHERE id = ?', [salonId]);
+      expect(row).toBeDefined();
+    } finally {
+      await db.execute('DELETE FROM stylists WHERE id = ?', [stylistId]);
+    }
+  });
+
+  it('retourne 409 avec dependencies.services = 1 si le salon a un service', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete Service', '5 rue Delete', '0600000034']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const [service] = await db.execute(
+      'INSERT INTO services (name, duration_minutes, price, salon_id) VALUES (?, ?, ?, ?)',
+      ['Service Test Delete', 30, 20.00, salonId]
+    );
+    const serviceId = service.insertId;
+
+    try {
+      const res = await request(app)
+        .delete(`/api/salons/${salonId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.dependencies).toMatchObject({ services: 1 });
+    } finally {
+      await db.execute('DELETE FROM services WHERE id = ?', [serviceId]);
+    }
+  });
+
+  it('retourne 409 avec dependencies.users = 1 si un user est rattache au salon', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete User', '6 rue Delete', '0600000035']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const [user] = await db.execute(
+      `INSERT INTO users (email, password_hash, first_name, last_name, role, salon_id, email_verified)
+       VALUES (?, 'x', 'Manager', 'Delete', 'manager', ?, 1)`,
+      ['manager-delete-jest@salon.fr', salonId]
+    );
+    const userId = user.insertId;
+
+    try {
+      const res = await request(app)
+        .delete(`/api/salons/${salonId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.dependencies).toMatchObject({ users: 1 });
+    } finally {
+      await db.execute('DELETE FROM users WHERE id = ?', [userId]);
+    }
+  });
+
+  it('liste plusieurs dependances a la fois (stylist + service)', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete Multi', '7 rue Delete', '0600000036']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const [stylist] = await db.execute(
+      'INSERT INTO stylists (salon_id, first_name, last_name) VALUES (?, ?, ?)',
+      [salonId, 'Multi', 'Delete']
+    );
+    const stylistId = stylist.insertId;
+
+    const [service] = await db.execute(
+      'INSERT INTO services (name, duration_minutes, price, salon_id) VALUES (?, ?, ?, ?)',
+      ['Service Test Delete Multi', 30, 20.00, salonId]
+    );
+    const serviceId = service.insertId;
+
+    try {
+      const res = await request(app)
+        .delete(`/api/salons/${salonId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.dependencies).toMatchObject({ stylists: 1, services: 1 });
+    } finally {
+      await db.execute('DELETE FROM stylists WHERE id = ?', [stylistId]);
+      await db.execute('DELETE FROM services WHERE id = ?', [serviceId]);
+    }
+  });
+
+  it('les cles a zero sont absentes de dependencies', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Delete Cles Absentes', '8 rue Delete', '0600000037']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const [stylist] = await db.execute(
+      'INSERT INTO stylists (salon_id, first_name, last_name) VALUES (?, ?, ?)',
+      [salonId, 'Cles', 'Absentes']
+    );
+    const stylistId = stylist.insertId;
+
+    try {
+      const res = await request(app)
+        .delete(`/api/salons/${salonId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.dependencies).toHaveProperty('stylists', 1);
+      expect(res.body.dependencies).not.toHaveProperty('services');
+      expect(res.body.dependencies).not.toHaveProperty('users');
+      expect(res.body.dependencies).not.toHaveProperty('action_tokens');
+      expect(res.body.dependencies).not.toHaveProperty('appointments');
+    } finally {
+      await db.execute('DELETE FROM stylists WHERE id = ?', [stylistId]);
+    }
+  });
+
+});

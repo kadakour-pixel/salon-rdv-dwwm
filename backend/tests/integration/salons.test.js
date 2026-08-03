@@ -2,6 +2,7 @@ const request = require('supertest');
 const app     = require('../../server');
 const db      = require('../../src/config/db');
 const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
 
 // Ne JAMAIS truncate salons/stylists : le salon 1 / stylist 1 seedés par
 // schema_test.sql sont la cible du DEFAULT 1 des autres tables (services,
@@ -719,6 +720,191 @@ describe('POST /api/salons/:id/status', () => {
     } finally {
       await db.execute('DELETE FROM appointments WHERE id = ?', [appt.insertId]);
       await db.execute('UPDATE salons SET is_active = 1 WHERE id = ?', [activeSalonId]);
+    }
+  });
+
+});
+
+describe('POST /api/salons/:id/archive', () => {
+
+  // Local à ce describe (pas le createdSalonIds du describe POST/PUT) :
+  // l'archivage étant TERMINAL, chaque test qui archive doit utiliser un
+  // salon jetable qui lui est propre, jamais activeSalonId/inactiveSalonId.
+  const createdSalonIds = [];
+
+  afterAll(async () => {
+    if (createdSalonIds.length > 0) {
+      // Défensif : si un test échoue avant son finally, un token survivrait
+      // et le RESTRICT de la FK ferait planter le nettoyage des salons.
+      // Même logique que le DELETE défensif de reviews dans manager.test.js.
+      await db.execute(
+        `DELETE FROM action_tokens WHERE salon_id IN (${createdSalonIds.map(() => '?').join(',')})`,
+        createdSalonIds
+      );
+      await db.execute(
+        `DELETE FROM salons WHERE id IN (${createdSalonIds.map(() => '?').join(',')})`,
+        createdSalonIds
+      );
+    }
+  });
+
+  it('retourne 401 sans token', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive 401', '1 rue Archive', '0600000020']
+    );
+    createdSalonIds.push(salon.insertId);
+
+    const res = await request(app).post(`/api/salons/${salon.insertId}/archive`);
+
+    expect(res.status).toBe(401);
+  });
+
+  it('retourne 403 avec un token client', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive 403', '2 rue Archive', '0600000021']
+    );
+    createdSalonIds.push(salon.insertId);
+
+    const res = await request(app)
+      .post(`/api/salons/${salon.insertId}/archive`)
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('retourne 404 pour un salon inexistant', async () => {
+    const res = await request(app)
+      .post('/api/salons/999999/archive')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it('archive un salon neuf : archived_at, archived_by et is_active = 0 en base', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive OK', '3 rue Archive', '0600000022']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    const res = await request(app)
+      .post(`/api/salons/${salonId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: salonId, archived: true, invalidated_tokens: 0 });
+
+    const [[row]] = await db.execute(
+      'SELECT archived_at, archived_by, is_active FROM salons WHERE id = ?',
+      [salonId]
+    );
+    expect(row.archived_at).not.toBeNull();
+    expect(row.archived_by).toBe(1); // id porté par adminToken
+    expect(row.is_active).toBe(0);
+  });
+
+  it('retourne 409 si on rearchive le meme salon', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Rearchive', '4 rue Archive', '0600000023']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    await request(app)
+      .post(`/api/salons/${salonId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    const res = await request(app)
+      .post(`/api/salons/${salonId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(409);
+  });
+
+  it('setSalonStatus refuse de reactiver un salon archive', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive Puis Status', '5 rue Archive', '0600000024']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    await request(app)
+      .post(`/api/salons/${salonId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    const res = await request(app)
+      .post(`/api/salons/${salonId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ is_active: 1 });
+
+    expect(res.status).toBe(409);
+  });
+
+  it("un salon archive n'apparait pas dans GET /api/salons public, mais apparait dans GET /api/salons/admin", async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive Visibilite', '6 rue Archive', '0600000025']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    await request(app)
+      .post(`/api/salons/${salonId}/archive`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    const publicList = await request(app).get('/api/salons');
+    expect(publicList.body.some(s => s.id === salonId)).toBe(false);
+
+    const adminList = await request(app)
+      .get('/api/salons/admin')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(adminList.body.some(s => s.id === salonId)).toBe(true);
+  });
+
+  it('invalide les tokens invite_manager non consommes du salon', async () => {
+    const [salon] = await db.execute(
+      'INSERT INTO salons (name, address, phone) VALUES (?, ?, ?)',
+      ['Salon Test Archive Tokens', '7 rue Archive', '0600000026']
+    );
+    const salonId = salon.insertId;
+    createdSalonIds.push(salonId);
+
+    // password_hash = 'x' : aucun login sur ce compte, il ne sert que de
+    // user_id pour le token d'invitation.
+    const [managerUser] = await db.execute(
+      `INSERT INTO users (email, password_hash, first_name, last_name, role, salon_id, email_verified)
+       VALUES (?, 'x', 'Manager', 'Jetable', 'manager', ?, 1)`,
+      ['manager-archive-jest@salon.fr', salonId]
+    );
+    const managerUserId = managerUser.insertId;
+
+    const tokenHash = crypto.randomBytes(32).toString('hex');
+    const [token] = await db.execute(
+      `INSERT INTO action_tokens (user_id, salon_id, type, token_hash, expires_at)
+       VALUES (?, ?, 'invite_manager', ?, DATE_ADD(NOW(), INTERVAL 1 DAY))`,
+      [managerUserId, salonId, tokenHash]
+    );
+    const tokenId = token.insertId;
+
+    try {
+      const res = await request(app)
+        .post(`/api/salons/${salonId}/archive`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.invalidated_tokens).toBe(1);
+
+      const [[row]] = await db.execute('SELECT used_at FROM action_tokens WHERE id = ?', [tokenId]);
+      expect(row.used_at).not.toBeNull();
+    } finally {
+      // Ordre FK : action_tokens puis users
+      await db.execute('DELETE FROM action_tokens WHERE id = ?', [tokenId]);
+      await db.execute('DELETE FROM users WHERE id = ?', [managerUserId]);
     }
   });
 

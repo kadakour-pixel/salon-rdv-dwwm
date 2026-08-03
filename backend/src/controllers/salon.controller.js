@@ -261,4 +261,49 @@ async function setSalonStatus(req, res) {
   }
 }
 
-module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon, setSalonStatus };
+// POST /api/salons/:id/archive — admin, pas de body
+// Archivage TERMINAL : setSalonStatus refuse déjà de réactiver un salon
+// archivé, et aucun endpoint ne remet archived_at à NULL.
+async function archiveSalon(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+
+  try {
+    const [[salon]] = await db.execute('SELECT archived_at FROM salons WHERE id = ?', [id]);
+    if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
+
+    if (salon.archived_at !== null) {
+      return res.status(409).json({ error: 'Salon deja archive' });
+    }
+
+    // is_active = 0 forcé en même temps : défense en profondeur — tous les
+    // WHERE is_active = 1 déjà en place dans le projet filtrent alors
+    // l'archivé sans avoir à ajouter archived_at IS NULL partout.
+    await db.execute(
+      'UPDATE salons SET archived_at = NOW(), archived_by = ?, is_active = 0 WHERE id = ?',
+      [req.user.id, id]
+    );
+
+    // Invalidation par salon_id (et non user_id comme la purge de
+    // invite-manager) : un lien d'invitation encore valide créerait un mot
+    // de passe manager pour un salon fermé. UPDATE used_at plutôt que
+    // DELETE : on garde la trace, et set-password rejette déjà un token
+    // consommé.
+    const [result] = await db.execute(
+      `UPDATE action_tokens SET used_at = NOW()
+       WHERE salon_id = ? AND type = 'invite_manager' AND used_at IS NULL`,
+      [id]
+    );
+
+    // Pas de transaction : aucun pattern de ce type dans le projet (même
+    // choix qu'à set-password), 2 UPDATE séquentiels — backlog.
+    res.json({ id, archived: true, invalidated_tokens: result.affectedRows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon, setSalonStatus, archiveSalon };

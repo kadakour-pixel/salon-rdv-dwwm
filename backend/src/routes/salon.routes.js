@@ -17,5 +17,6 @@ router.get('/:id/stylists', ctrl.getSalonStylists);  // Coiffeurs actifs d'un sa
 // Routes admin (gestion des salons, pas d'accès manager)
 router.post('/',  authenticate, requireRole('admin'), ctrl.createSalon);  // Créer un salon
 router.put('/:id', authenticate, requireRole('admin'), ctrl.updateSalon); // Modifier un salon
+router.post('/:id/status', authenticate, requireRole('admin'), ctrl.setSalonStatus); // Activer/désactiver un salon
 
 module.exports = router;

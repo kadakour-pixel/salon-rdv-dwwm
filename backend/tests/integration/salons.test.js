@@ -10,6 +10,11 @@ const jwt     = require('jsonwebtoken');
 // afterAll par DELETE ciblé.
 
 let activeSalonId, inactiveSalonId, activeStylistId, inactiveStylistId;
+// user/service dédiés à ce fichier : schema_test.sql ne seed ni users ni
+// services (contrairement à salons/stylists), et d'autres fichiers TRUNCATE
+// ces deux tables dans leur propre beforeEach sans ordre garanti entre
+// suites — impossible de compter sur une ligne laissée par ailleurs.
+let testUserId, testServiceId;
 
 beforeAll(async () => {
   const [activeSalon] = await db.execute(
@@ -35,10 +40,29 @@ beforeAll(async () => {
     [activeSalonId, 'Bob', 'Inactif']
   );
   inactiveStylistId = inactiveStylist.insertId;
+
+  // password_hash = 'x' : aucun login sur ce compte, il ne sert que de
+  // user_id pour rattacher des RDV de test (pas de bcrypt nécessaire).
+  const [user] = await db.execute(
+    'INSERT INTO users (email, password_hash, first_name, last_name) VALUES (?, ?, ?, ?)',
+    ['salon-status-jest@salon.fr', 'x', 'Salon', 'Status']
+  );
+  testUserId = user.insertId;
+
+  // salon_id = activeSalonId explicite : sans lui, le DEFAULT 1 rattacherait
+  // la prestation au salon 1 au lieu du salon de test.
+  const [service] = await db.execute(
+    'INSERT INTO services (name, duration_minutes, price, salon_id) VALUES (?, ?, ?, ?)',
+    ['Service Test Salon Status', 30, 20.00, activeSalonId]
+  );
+  testServiceId = service.insertId;
 });
 
 afterAll(async () => {
-  // Ordre FK : stylists avant salons
+  // Ordre FK : appointments → users → services → stylists → salons
+  await db.execute('DELETE FROM appointments WHERE stylist_id IN (?, ?)', [activeStylistId, inactiveStylistId]);
+  await db.execute('DELETE FROM users WHERE id = ?', [testUserId]);
+  await db.execute('DELETE FROM services WHERE id = ?', [testServiceId]);
   await db.execute('DELETE FROM stylists WHERE id IN (?, ?)', [activeStylistId, inactiveStylistId]);
   await db.execute('DELETE FROM salons WHERE id IN (?, ?)', [activeSalonId, inactiveSalonId]);
 });
@@ -513,6 +537,189 @@ describe('GET /api/salons/admin', () => {
 
     expect(withoutDependency.can_delete).toBe(true);
     expect(salon1.can_delete).toBe(false);
+  });
+
+});
+
+// Dates calculées dynamiquement à partir de NOW (jamais de date en dur, jamais
+// toISOString() qui convertirait en UTC et décalerait le jour) : composants
+// locaux formatés à la main, au format DATETIME MySQL.
+function dateTimeOffset(days, hours, minutes) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  d.setHours(hours, minutes, 0, 0);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:00`;
+}
+
+describe('POST /api/salons/:id/status', () => {
+
+  it('retourne 401 sans token', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .send({ is_active: 0 });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('retourne 403 avec un token client', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .set('Authorization', `Bearer ${clientToken}`)
+      .send({ is_active: 0 });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('retourne 404 pour un salon inexistant', async () => {
+    const res = await request(app)
+      .post('/api/salons/999999/status')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ is_active: 0 });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('retourne 400 si is_active est absent', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it('retourne 400 si is_active vaut 2', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ is_active: 2 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('desactive un salon sans RDV futur : is_active 0 en base', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ is_active: 0 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: activeSalonId, is_active: 0 });
+
+    const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+    expect(row.is_active).toBe(0);
+  });
+
+  it('reactive ce meme salon : is_active 1', async () => {
+    const res = await request(app)
+      .post(`/api/salons/${activeSalonId}/status`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ is_active: 1 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ id: activeSalonId, is_active: 1 });
+
+    const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+    expect(row.is_active).toBe(1);
+  });
+
+  it('retourne 409 avec future_appointments = 1 si un RDV futur non annulé existe sans force ; le salon reste actif', async () => {
+    const [appt] = await db.execute(
+      `INSERT INTO appointments (user_id, service_id, salon_id, stylist_id, start_at, end_at, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'confirmed')`,
+      [testUserId, testServiceId, activeSalonId, activeStylistId, dateTimeOffset(2, 10, 0), dateTimeOffset(2, 10, 30)]
+    );
+
+    try {
+      const res = await request(app)
+        .post(`/api/salons/${activeSalonId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ is_active: 0 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.future_appointments).toBe(1);
+
+      const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+      expect(row.is_active).toBe(1);
+    } finally {
+      await db.execute('DELETE FROM appointments WHERE id = ?', [appt.insertId]);
+    }
+  });
+
+  it('accepte la desactivation avec force: true malgre un RDV futur ; salon desactive en base', async () => {
+    const [appt] = await db.execute(
+      `INSERT INTO appointments (user_id, service_id, salon_id, stylist_id, start_at, end_at, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'confirmed')`,
+      [testUserId, testServiceId, activeSalonId, activeStylistId, dateTimeOffset(2, 10, 0), dateTimeOffset(2, 10, 30)]
+    );
+
+    try {
+      const res = await request(app)
+        .post(`/api/salons/${activeSalonId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ is_active: 0, force: true });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ id: activeSalonId, is_active: 0 });
+
+      const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+      expect(row.is_active).toBe(0);
+    } finally {
+      await db.execute('DELETE FROM appointments WHERE id = ?', [appt.insertId]);
+      // Réactive le salon pour ne pas contaminer les tests suivants.
+      await db.execute('UPDATE salons SET is_active = 1 WHERE id = ?', [activeSalonId]);
+    }
+  });
+
+  it('un RDV futur annule ne compte pas : desactivation acceptee sans force', async () => {
+    const [appt] = await db.execute(
+      `INSERT INTO appointments (user_id, service_id, salon_id, stylist_id, start_at, end_at, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'cancelled')`,
+      [testUserId, testServiceId, activeSalonId, activeStylistId, dateTimeOffset(2, 10, 0), dateTimeOffset(2, 10, 30)]
+    );
+
+    try {
+      const res = await request(app)
+        .post(`/api/salons/${activeSalonId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ is_active: 0 });
+
+      expect(res.status).toBe(200);
+
+      const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+      expect(row.is_active).toBe(0);
+    } finally {
+      await db.execute('DELETE FROM appointments WHERE id = ?', [appt.insertId]);
+      await db.execute('UPDATE salons SET is_active = 1 WHERE id = ?', [activeSalonId]);
+    }
+  });
+
+  it('un RDV passe ne compte pas : desactivation acceptee sans force', async () => {
+    const [appt] = await db.execute(
+      `INSERT INTO appointments (user_id, service_id, salon_id, stylist_id, start_at, end_at, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'confirmed')`,
+      [testUserId, testServiceId, activeSalonId, activeStylistId, dateTimeOffset(-2, 10, 0), dateTimeOffset(-2, 10, 30)]
+    );
+
+    try {
+      const res = await request(app)
+        .post(`/api/salons/${activeSalonId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ is_active: 0 });
+
+      expect(res.status).toBe(200);
+
+      const [[row]] = await db.execute('SELECT is_active FROM salons WHERE id = ?', [activeSalonId]);
+      expect(row.is_active).toBe(0);
+    } finally {
+      await db.execute('DELETE FROM appointments WHERE id = ?', [appt.insertId]);
+      await db.execute('UPDATE salons SET is_active = 1 WHERE id = ?', [activeSalonId]);
+    }
   });
 
 });

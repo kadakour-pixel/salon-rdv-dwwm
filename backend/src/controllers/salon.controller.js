@@ -203,4 +203,62 @@ async function updateSalon(req, res) {
   }
 }
 
-module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon };
+// POST /api/salons/:id/status — admin
+// Pas de PATCH : aucun dans le projet, on suit le pattern POST /block de
+// availability.routes.js (action sur sous-ressource plutôt que verbe dédié).
+async function setSalonStatus(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+
+  if (req.body.is_active === undefined) {
+    return res.status(400).json({ error: 'Champ obligatoire : is_active' });
+  }
+  const isActive = Number(req.body.is_active);
+  if (isActive !== 0 && isActive !== 1) {
+    return res.status(400).json({ error: 'is_active doit valoir 0 ou 1' });
+  }
+
+  try {
+    const [[salon]] = await db.execute('SELECT archived_at FROM salons WHERE id = ?', [id]);
+    if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
+
+    // On ne réactive pas un salon archivé via cette route : l'archivage est
+    // une étape distincte, plus définitive, qu'une simple bascule is_active.
+    if (salon.archived_at !== null) {
+      return res.status(409).json({ error: 'Salon archive' });
+    }
+
+    if (isActive === 0 && req.body.force !== true) {
+      // status != 'cancelled' (et non = 'confirmed') : un RDV 'pending' aura
+      // aussi lieu, on exclut plutôt qu'on inclut pour rester correct si
+      // l'ENUM grandit. NOW() calculé en SQL, jamais de date en JS.
+      const [[row]] = await db.execute(
+        `SELECT COUNT(*) AS c FROM appointments a
+         JOIN stylists st ON st.id = a.stylist_id
+         WHERE st.salon_id = ? AND a.start_at > NOW()
+           AND a.status != 'cancelled'`,
+        [id]
+      );
+      const futureAppointments = Number(row.c);
+      // Forme de 409 inédite dans le projet (les autres ne renvoient que
+      // { error }) : délibérée, le front a besoin du compte pour construire
+      // sa confirmation ("X RDV seront affectés, continuer ?").
+      if (futureAppointments > 0) {
+        return res.status(409).json({
+          error: 'Le salon a des rendez-vous a venir',
+          future_appointments: futureAppointments,
+        });
+      }
+    }
+
+    await db.execute('UPDATE salons SET is_active = ? WHERE id = ?', [isActive, id]);
+    res.json({ id, is_active: isActive });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon, setSalonStatus };

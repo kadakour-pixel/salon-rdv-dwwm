@@ -17,12 +17,16 @@ DROP TABLE IF EXISTS users;
 SET FOREIGN_KEY_CHECKS = 1;
 
 CREATE TABLE salons (
-  id         INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name       VARCHAR(100) NOT NULL,
-  address    VARCHAR(255),
-  phone      VARCHAR(20),
-  is_active  TINYINT(1) NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id           INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name         VARCHAR(100) NOT NULL,
+  address      VARCHAR(255),
+  phone        VARCHAR(20),
+  is_active    TINYINT(1) NOT NULL DEFAULT 1,
+  latitude     DECIMAL(10,8) NULL,
+  longitude    DECIMAL(11,8) NULL,
+  archived_at  DATETIME NULL,
+  archived_by  INT UNSIGNED NULL, -- FK vers users(id), int(10) unsigned : types identiques signe compris requis
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE stylists (
@@ -120,6 +124,15 @@ CREATE TABLE reviews (
     REFERENCES appointments(id),
   CONSTRAINT fk_reviews_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- FK différée : archived_by référence users(id), mais salons est créée AVANT
+-- users (users.salon_id référence déjà salons) — dépendance circulaire entre
+-- les deux tables. Cette contrainte ne peut donc pas être inline dans le
+-- CREATE TABLE salons ci-dessus ; elle est ajoutée ici, une fois users créée.
+ALTER TABLE salons
+  ADD CONSTRAINT fk_salons_archived_by
+    FOREIGN KEY (archived_by) REFERENCES users(id)
+    ON DELETE SET NULL;
 
 INSERT INTO salons (id, name, address, phone) VALUES
   (1, 'Salon Élégance', '1 rue de la République, 59100 Roubaix', '0300000000');

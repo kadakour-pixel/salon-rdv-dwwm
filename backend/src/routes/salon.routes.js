@@ -6,6 +6,11 @@ const { authenticate, requireRole } = require('../middlewares/auth.middleware');
 
 // Routes publiques
 router.get('/',             ctrl.getAllSalons);     // Liste des salons actifs
+
+// /admin DOIT être déclarée avant /:id : sinon Express fait matcher /:id en
+// premier (ordre de déclaration) et "admin" serait capturé comme un id de salon.
+router.get('/admin', authenticate, requireRole('admin'), ctrl.getAllSalonsAdmin); // Tous les salons (admin)
+
 router.get('/:id',          ctrl.getSalonById);      // Détail d'un salon
 router.get('/:id/stylists', ctrl.getSalonStylists);  // Coiffeurs actifs d'un salon
 

@@ -5,7 +5,7 @@ const db = require('../config/db');
 async function getAllSalons(req, res) {
   try {
     const [rows] = await db.execute(
-      'SELECT id, name, address, phone FROM salons WHERE is_active = 1 ORDER BY name ASC'
+      'SELECT id, name, address, phone, latitude, longitude FROM salons WHERE is_active = 1 ORDER BY name ASC'
     );
     res.json(rows);
   } catch (err) {
@@ -23,7 +23,7 @@ async function getSalonById(req, res) {
 
   try {
     const [[salon]] = await db.execute(
-      'SELECT id, name, address, phone FROM salons WHERE id = ? AND is_active = 1',
+      'SELECT id, name, address, phone, latitude, longitude FROM salons WHERE id = ? AND is_active = 1',
       [id]
     );
     if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
@@ -55,6 +55,41 @@ async function getSalonStylists(req, res) {
       [id]
     );
     res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+}
+
+// GET /api/salons/admin — admin (tous les salons : actifs, inactifs, archivés)
+// can_delete : aucune dépendance (stylists/services/users/action_tokens/appointments
+// du salon) — seul cas où un DELETE physique sera autorisé. Le serveur revérifiera
+// de toute façon ces mêmes conditions au moment du DELETE (ce calcul n'est qu'informatif
+// pour l'affichage).
+async function getAllSalonsAdmin(req, res) {
+  try {
+    const [rows] = await db.execute(
+      `SELECT
+         s.id, s.name, s.address, s.phone, s.is_active,
+         s.latitude, s.longitude, s.archived_at, s.archived_by,
+         (
+           NOT EXISTS (SELECT 1 FROM stylists      st  WHERE st.salon_id  = s.id) AND
+           NOT EXISTS (SELECT 1 FROM services      sv  WHERE sv.salon_id  = s.id) AND
+           NOT EXISTS (SELECT 1 FROM users         u   WHERE u.salon_id   = s.id) AND
+           NOT EXISTS (SELECT 1 FROM action_tokens atk WHERE atk.salon_id = s.id) AND
+           NOT EXISTS (
+             SELECT 1 FROM appointments a
+             JOIN stylists ast ON ast.id = a.stylist_id
+             WHERE ast.salon_id = s.id
+           )
+         ) AS can_delete
+       FROM salons s
+       ORDER BY s.name ASC`
+    );
+    // MariaDB renvoie les expressions booléennes en 1/0 : on expose un vrai
+    // booléen JSON pour ce champ calculé plutôt que de laisser fuir le 1/0 SQL.
+    const salons = rows.map((row) => ({ ...row, can_delete: Boolean(row.can_delete) }));
+    res.json(salons);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -125,4 +160,4 @@ async function updateSalon(req, res) {
   }
 }
 
-module.exports = { getAllSalons, getSalonById, getSalonStylists, createSalon, updateSalon };
+module.exports = { getAllSalons, getSalonById, getSalonStylists, getAllSalonsAdmin, createSalon, updateSalon };

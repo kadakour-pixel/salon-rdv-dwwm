@@ -53,6 +53,16 @@ describe('GET /api/salons', () => {
     expect(res.body.some(s => s.id === inactiveSalonId)).toBe(false);
   });
 
+  it('expose latitude et longitude sur chaque salon', async () => {
+    const res = await request(app).get('/api/salons');
+
+    expect(res.status).toBe(200);
+    res.body.forEach((salon) => {
+      expect(salon).toHaveProperty('latitude');
+      expect(salon).toHaveProperty('longitude');
+    });
+  });
+
 });
 
 describe('GET /api/salons/:id', () => {
@@ -294,6 +304,64 @@ describe('POST et PUT /api/salons (admin)', () => {
       .send({ name: 'Salon Modifié Par Manager' });
 
     expect(res.status).toBe(403);
+  });
+
+});
+
+describe('GET /api/salons/admin', () => {
+
+  it('retourne 401 sans token', async () => {
+    const res = await request(app).get('/api/salons/admin');
+
+    expect(res.status).toBe(401);
+  });
+
+  it('retourne 403 avec un token client', async () => {
+    const res = await request(app)
+      .get('/api/salons/admin')
+      .set('Authorization', `Bearer ${clientToken}`);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('retourne 200 avec token admin et inclut le salon inactif', async () => {
+    const res = await request(app)
+      .get('/api/salons/admin')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.some(s => s.id === inactiveSalonId)).toBe(true);
+  });
+
+  it('chaque salon expose latitude, longitude, archived_at et can_delete (booléen)', async () => {
+    const res = await request(app)
+      .get('/api/salons/admin')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThan(0);
+    res.body.forEach((salon) => {
+      expect(salon).toHaveProperty('latitude');
+      expect(salon).toHaveProperty('longitude');
+      expect(salon).toHaveProperty('archived_at');
+      expect(typeof salon.can_delete).toBe('boolean');
+    });
+  });
+
+  it('can_delete vaut true pour un salon sans dépendance, false pour le salon 1', async () => {
+    const res = await request(app)
+      .get('/api/salons/admin')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    // inactiveSalonId : aucune fixture de ce fichier ne lui attache de
+    // stylist/service/user/action_token/appointment → sans dépendance.
+    const withoutDependency = res.body.find(s => s.id === inactiveSalonId);
+    // salon 1 : le stylist 1 seedé par schema_test.sql (jamais truncaté) lui
+    // reste toujours rattaché → dépendance garantie.
+    const salon1 = res.body.find(s => s.id === 1);
+
+    expect(withoutDependency.can_delete).toBe(true);
+    expect(salon1.can_delete).toBe(false);
   });
 
 });

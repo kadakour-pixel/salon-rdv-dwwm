@@ -106,40 +106,37 @@ async function create(req, res) {
   }
 
   try {
-    // salon_id : absent → repli 1 sans requête (rétrocompat) ; fourni → entier
-    // positif correspondant à un salon actif.
+    // salon_id : absent → repli 1 ; fourni → doit être un entier positif.
+    // Dans tous les cas, l'état actif du salon est vérifié en base.
     let salonId = 1;
     if (req.body.salon_id !== undefined) {
       salonId = Number(req.body.salon_id);
       if (!Number.isInteger(salonId) || salonId <= 0) {
         return res.status(400).json({ error: 'salon_id invalide' });
       }
-      const [[salon]] = await db.execute(
-        'SELECT id FROM salons WHERE id = ? AND is_active = 1',
-        [salonId]
-      );
-      if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
     }
+    const [[salon]] = await db.execute(
+      'SELECT id FROM salons WHERE id = ? AND is_active = 1',
+      [salonId]
+    );
+    if (!salon) return res.status(404).json({ error: 'Salon introuvable' });
 
-    // stylist_id : absent → repli 1 sans requête ; fourni → entier positif
-    // correspondant à un coiffeur actif. salon_id du coiffeur ramené dans la
-    // même requête (pas de requête supplémentaire) pour la cohérence ci-dessous ;
-    // par défaut (stylist_id absent) le coiffeur 1 appartient toujours au salon 1
-    // (seed de la migration 005, jamais modifié ailleurs dans l'app).
+    // stylist_id : absent → repli 1 ; fourni → doit être un entier positif.
+    // Dans tous les cas, l'état actif du coiffeur est vérifié en base et
+    // stylistSalonId vient toujours de ce résultat (pour la cohérence ci-dessous).
     let stylistId = 1;
-    let stylistSalonId = 1;
     if (req.body.stylist_id !== undefined) {
       stylistId = Number(req.body.stylist_id);
       if (!Number.isInteger(stylistId) || stylistId <= 0) {
         return res.status(400).json({ error: 'stylist_id invalide' });
       }
-      const [[stylist]] = await db.execute(
-        'SELECT id, salon_id FROM stylists WHERE id = ? AND is_active = 1',
-        [stylistId]
-      );
-      if (!stylist) return res.status(404).json({ error: 'Coiffeur introuvable' });
-      stylistSalonId = stylist.salon_id;
     }
+    const [[stylist]] = await db.execute(
+      'SELECT id, salon_id FROM stylists WHERE id = ? AND is_active = 1',
+      [stylistId]
+    );
+    if (!stylist) return res.status(404).json({ error: 'Coiffeur introuvable' });
+    const stylistSalonId = stylist.salon_id;
 
     // Cohérence stylist ↔ salon : les deux ressources existent séparément, mais la
     // combinaison est invalide si le coiffeur n'appartient pas au salon demandé

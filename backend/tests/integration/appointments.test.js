@@ -16,7 +16,9 @@ const DATE = '2026-07-15';
 //   tests de cohérence stylist↔salon et service↔salon.
 // - stylist3Id : un second coiffeur du salon 1, pour le test du créneau
 //   partagé par deux coiffeurs différents.
-let salon2Id, stylist2Id, stylist3Id;
+// - inactiveSalonId / inactiveStylistId : un salon et un coiffeur inactifs,
+//   pour les tests de vérification systématique de l'état actif.
+let salon2Id, stylist2Id, stylist3Id, inactiveSalonId, inactiveStylistId;
 
 beforeAll(async () => {
   const [salon2] = await db.execute(
@@ -36,6 +38,18 @@ beforeAll(async () => {
     ['Troisieme', 'Coiffeur']
   );
   stylist3Id = stylist3.insertId;
+
+  const [inactiveSalon] = await db.execute(
+    'INSERT INTO salons (name, address, phone, is_active) VALUES (?, ?, ?, 0)',
+    ['Salon Test Inactif RDV', '13 rue du Test', '0600000013']
+  );
+  inactiveSalonId = inactiveSalon.insertId;
+
+  const [inactiveStylist] = await db.execute(
+    'INSERT INTO stylists (salon_id, first_name, last_name, is_active) VALUES (1, ?, ?, 0)',
+    ['Inactif', 'Coiffeur']
+  );
+  inactiveStylistId = inactiveStylist.insertId;
 });
 
 afterAll(async () => {
@@ -46,8 +60,8 @@ afterAll(async () => {
   await db.execute('TRUNCATE TABLE appointments');
   await db.execute('TRUNCATE TABLE services');
   await db.execute('SET FOREIGN_KEY_CHECKS = 1');
-  await db.execute('DELETE FROM stylists WHERE id IN (?, ?)', [stylist2Id, stylist3Id]);
-  await db.execute('DELETE FROM salons WHERE id = ?', [salon2Id]);
+  await db.execute('DELETE FROM stylists WHERE id IN (?, ?, ?)', [stylist2Id, stylist3Id, inactiveStylistId]);
+  await db.execute('DELETE FROM salons WHERE id IN (?, ?)', [salon2Id, inactiveSalonId]);
 });
 
 // Repart de tables vides + un client, une prestation et des horaires d'ouverture propres
@@ -235,6 +249,44 @@ describe('POST /api/appointments', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ service_id: serviceId, start_at: `${DATE} 10:00:00`, stylist_id: 999999 });
     expect(missing.status).toBe(404);
+  });
+
+  // ── Cas 10 : vérification systématique de l'état actif du salon (fourni) ──
+  it('retourne 404 pour un salon_id explicite pointant un salon inactif', async () => {
+    const res = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ service_id: serviceId, start_at: `${DATE} 10:00:00`, salon_id: inactiveSalonId });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Salon introuvable');
+  });
+
+  // ── Cas 11 : vérification systématique de l'état actif du salon (repli) ──
+  it('retourne 404 par repli quand le salon 1 est inactif (restauration garantie)', async () => {
+    await db.execute('UPDATE salons SET is_active = 0 WHERE id = 1');
+    try {
+      const res = await request(app)
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ service_id: serviceId, start_at: `${DATE} 10:00:00` });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Salon introuvable');
+    } finally {
+      await db.execute('UPDATE salons SET is_active = 1 WHERE id = 1');
+    }
+  });
+
+  // ── Cas 12 : vérification systématique de l'état actif du coiffeur (fourni) ──
+  it('retourne 404 pour un stylist_id explicite pointant un coiffeur inactif', async () => {
+    const res = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ service_id: serviceId, start_at: `${DATE} 10:00:00`, stylist_id: inactiveStylistId });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe('Coiffeur introuvable');
   });
 
 });

@@ -306,6 +306,157 @@ describe('POST et PUT /api/salons (admin)', () => {
     expect(res.status).toBe(403);
   });
 
+  // ── Coordonnées (latitude/longitude) — POST ─────────────────────
+  it('POST avec latitude/longitude valides : relues correctement (DECIMAL en chaîne via mysql2)', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Coords Valides', latitude: 45.5, longitude: 4.85 });
+
+    expect(res.status).toBe(201);
+    createdSalonIds.push(res.body.id);
+    expect(Number(res.body.latitude)).toBe(45.5);
+    expect(Number(res.body.longitude)).toBe(4.85);
+
+    const [[row]] = await db.execute('SELECT latitude, longitude FROM salons WHERE id = ?', [res.body.id]);
+    expect(Number(row.latitude)).toBe(45.5);
+    expect(Number(row.longitude)).toBe(4.85);
+  });
+
+  it('POST avec latitude 0 et longitude 0 : relues à 0, pas null', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Coords Zero', latitude: 0, longitude: 0 });
+
+    expect(res.status).toBe(201);
+    createdSalonIds.push(res.body.id);
+    expect(res.body.latitude).not.toBeNull();
+    expect(res.body.longitude).not.toBeNull();
+    expect(Number(res.body.latitude)).toBe(0);
+    expect(Number(res.body.longitude)).toBe(0);
+
+    const [[row]] = await db.execute('SELECT latitude, longitude FROM salons WHERE id = ?', [res.body.id]);
+    expect(row.latitude).not.toBeNull();
+    expect(row.longitude).not.toBeNull();
+    expect(Number(row.latitude)).toBe(0);
+    expect(Number(row.longitude)).toBe(0);
+  });
+
+  it('POST avec latitude seule retourne 400', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Lat Seule', latitude: 45.5 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('POST avec longitude seule retourne 400', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Lng Seule', longitude: 4.85 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('POST avec latitude 91 retourne 400', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Lat Hors Bornes', latitude: 91, longitude: 0 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('POST avec longitude -181 retourne 400', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Lng Hors Bornes', latitude: 0, longitude: -181 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("POST avec latitude 'abc' retourne 400", async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Lat Invalide', latitude: 'abc', longitude: 0 });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('POST sans latitude ni longitude : les deux à null', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Sans Coords' });
+
+    expect(res.status).toBe(201);
+    createdSalonIds.push(res.body.id);
+    expect(res.body.latitude).toBeNull();
+    expect(res.body.longitude).toBeNull();
+
+    const [[row]] = await db.execute('SELECT latitude, longitude FROM salons WHERE id = ?', [res.body.id]);
+    expect(row.latitude).toBeNull();
+    expect(row.longitude).toBeNull();
+  });
+
+  it('POST avec latitude:null et longitude:null : les deux à null (pas 0)', async () => {
+    const res = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test Coords Null Explicite', latitude: null, longitude: null });
+
+    expect(res.status).toBe(201);
+    createdSalonIds.push(res.body.id);
+    expect(res.body.latitude).toBeNull();
+    expect(res.body.longitude).toBeNull();
+  });
+
+  // ── Coordonnées (latitude/longitude) — PUT ──────────────────────
+  it('PUT avec coordonnées : mises à jour', async () => {
+    const created = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test PUT Coords Avant' });
+    const salonId = created.body.id;
+    createdSalonIds.push(salonId);
+
+    const res = await request(app)
+      .put(`/api/salons/${salonId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test PUT Coords Après', latitude: 45.5, longitude: 4.85 });
+
+    expect(res.status).toBe(200);
+
+    const [[row]] = await db.execute('SELECT latitude, longitude FROM salons WHERE id = ?', [salonId]);
+    expect(Number(row.latitude)).toBe(45.5);
+    expect(Number(row.longitude)).toBe(4.85);
+  });
+
+  it('PUT sans coordonnées sur un salon qui en avait : remises à NULL', async () => {
+    const created = await request(app)
+      .post('/api/salons')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test PUT Coords Retrait Avant', latitude: 45.5, longitude: 4.85 });
+    const salonId = created.body.id;
+    createdSalonIds.push(salonId);
+
+    const res = await request(app)
+      .put(`/api/salons/${salonId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'Salon Test PUT Coords Retrait Après' });
+
+    expect(res.status).toBe(200);
+
+    const [[row]] = await db.execute('SELECT latitude, longitude FROM salons WHERE id = ?', [salonId]);
+    expect(row.latitude).toBeNull();
+    expect(row.longitude).toBeNull();
+  });
+
 });
 
 describe('GET /api/salons/admin', () => {

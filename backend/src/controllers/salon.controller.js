@@ -96,6 +96,43 @@ async function getAllSalonsAdmin(req, res) {
   }
 }
 
+// Valide latitude/longitude — même forme que resolveSalonId (service.controller.js).
+// Les bornes sont validées ici pour renvoyer un 400 propre : sans ce contrôle,
+// la colonne DECIMAL(10,8) lèverait une erreur SQL que le catch transformerait
+// en 500, alors que la faute est côté client.
+function resolveCoordinates(body) {
+  // Le front envoie `null` ou `''` pour un champ vide, pas seulement `undefined` —
+  // et Number(null) comme Number('') valent 0 (une coordonnée valide), donc les
+  // trois formes d'absence doivent être traitées identiquement, avant toute
+  // conversion Number().
+  const isAbsent = (v) => v === undefined || v === null || v === '';
+
+  if (isAbsent(body.latitude) && isAbsent(body.longitude)) {
+    return { latitude: null, longitude: null };
+  }
+  if (isAbsent(body.latitude) || isAbsent(body.longitude)) {
+    return { error: { status: 400, body: { error: 'latitude et longitude doivent etre fournies ensemble' } } };
+  }
+
+  const latitude = Number(body.latitude);
+  if (isNaN(latitude)) {
+    return { error: { status: 400, body: { error: 'latitude invalide' } } };
+  }
+  if (latitude < -90 || latitude > 90) {
+    return { error: { status: 400, body: { error: 'latitude hors bornes (-90 a 90)' } } };
+  }
+
+  const longitude = Number(body.longitude);
+  if (isNaN(longitude)) {
+    return { error: { status: 400, body: { error: 'longitude invalide' } } };
+  }
+  if (longitude < -180 || longitude > 180) {
+    return { error: { status: 400, body: { error: 'longitude hors bornes (-180 a 180)' } } };
+  }
+
+  return { latitude, longitude };
+}
+
 // POST /api/salons — admin
 async function createSalon(req, res) {
   const name = (req.body.name || '').trim();
@@ -114,12 +151,15 @@ async function createSalon(req, res) {
     }
   }
 
+  const { latitude, longitude, error: coordsError } = resolveCoordinates(req.body);
+  if (coordsError) return res.status(coordsError.status).json(coordsError.body);
+
   try {
     const [result] = await db.execute(
-      'INSERT INTO salons (name, address, phone, is_active) VALUES (?, ?, ?, ?)',
-      [name, address, phone, isActive]
+      'INSERT INTO salons (name, address, phone, is_active, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, address, phone, isActive, latitude, longitude]
     );
-    res.status(201).json({ id: result.insertId, name, address, phone, is_active: isActive });
+    res.status(201).json({ id: result.insertId, name, address, phone, is_active: isActive, latitude, longitude });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -128,8 +168,8 @@ async function createSalon(req, res) {
 
 // PUT /api/salons/:id — admin
 // Remplacement complet (sémantique PUT stricte, pas un PATCH) : tout champ
-// optionnel absent du body (address, phone) est remis à NULL. Le formulaire
-// d'édition du front doit donc toujours envoyer l'objet complet.
+// optionnel absent du body (address, phone, latitude, longitude) est remis à
+// NULL. Le formulaire d'édition du front doit donc toujours envoyer l'objet complet.
 async function updateSalon(req, res) {
   const name = (req.body.name || '').trim();
   if (!name) {
@@ -147,13 +187,16 @@ async function updateSalon(req, res) {
     }
   }
 
+  const { latitude, longitude, error: coordsError } = resolveCoordinates(req.body);
+  if (coordsError) return res.status(coordsError.status).json(coordsError.body);
+
   try {
     const [result] = await db.execute(
-      'UPDATE salons SET name = ?, address = ?, phone = ?, is_active = ? WHERE id = ?',
-      [name, address, phone, isActive, req.params.id]
+      'UPDATE salons SET name = ?, address = ?, phone = ?, is_active = ?, latitude = ?, longitude = ? WHERE id = ?',
+      [name, address, phone, isActive, latitude, longitude, req.params.id]
     );
     if (result.affectedRows === 0) return res.status(404).json({ error: 'Salon introuvable' });
-    res.json({ id: Number(req.params.id), name, address, phone, is_active: isActive });
+    res.json({ id: Number(req.params.id), name, address, phone, is_active: isActive, latitude, longitude });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erreur serveur' });

@@ -94,10 +94,10 @@
       margin-bottom: .4rem;
       color: var(--primary);
     }
-    .login-form-panel p {
-      font-size: .88rem;
-      color: var(--text-muted);
-      margin-bottom: 1.75rem;
+    .login-form-panel p:not(.form-error) {
+     color: var(--text-muted);
+     font-size: .88rem;
+     margin-bottom: 1.75rem;
     }
     .form-submit {
       width: 100%;

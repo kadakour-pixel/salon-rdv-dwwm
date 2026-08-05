@@ -131,3 +131,18 @@
       .login-page__visual { display: none; }
       .login-page__form-side { min-height: 100vh; }
     }
+    .login-page__back-link {
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: .88rem;
+      color: var(--text-muted);
+    }
+    .login-page__back-link a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .login-page__back-link a:hover {
+      color: var(--accent-light);
+      text-decoration: underline;
+    }

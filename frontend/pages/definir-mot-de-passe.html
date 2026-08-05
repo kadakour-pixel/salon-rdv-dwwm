@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Définir votre mot de passe — Salon Élégance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../css/pages.css" />
+  <link rel="stylesheet" href="../css/login.css" />
+</head>
+<body>
+<div class="login-page">
+
+  <!-- Côté visuel -->
+  <div class="login-page__visual" aria-hidden="true">
+    <p class="login-page__brand">Élégance<span>.</span></p>
+    <p class="login-page__tagline">
+      Définissez votre mot de passe<br />
+      pour accéder à votre espace.
+    </p>
+  </div>
+
+  <!-- Côté formulaire -->
+  <div class="login-page__form-side">
+    <div class="login-box">
+
+      <div class="login-form-panel active" id="panel-set-password">
+        <h2>Bienvenue !</h2>
+        <p>Choisissez un mot de passe pour activer votre compte.</p>
+
+        <div class="form-alert" id="setPasswordAlert" role="alert"></div>
+
+        <form id="setPasswordForm" novalidate>
+          <div class="form-group">
+            <label for="newPassword">Nouveau mot de passe</label>
+            <input type="password" id="newPassword" name="password" placeholder="8 caractères minimum"
+                   autocomplete="new-password" required />
+            <p class="form-error" id="newPasswordErr">8 caractères minimum.</p>
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirmer le mot de passe</label>
+            <input type="password" id="confirmPassword" name="confirm_password" placeholder="••••••••"
+                   autocomplete="new-password" required />
+            <p class="form-error" id="confirmPasswordErr">Les mots de passe ne correspondent pas.</p>
+          </div>
+          <button type="submit" class="form-submit" id="setPasswordSubmit">Définir mon mot de passe</button>
+        </form>
+
+        <p class="login-page__back-link" id="backToLoginLink" hidden>
+          <a href="login.html">Retour à la connexion</a>
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+  <script src="../js/app.js"></script>
+  <script src="../js/definir-mot-de-passe.js"></script>
+</body>
+</html>

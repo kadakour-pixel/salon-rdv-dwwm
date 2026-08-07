@@ -45,11 +45,20 @@ function resolveAgendaScope() {
 document.addEventListener('DOMContentLoaded', async () => {
   if (!Auth.isLogged() || !Auth.isStaff()) { window.location.href = 'login.html'; return; }
   document.querySelector('.dash-sidebar__logo small').textContent = Auth.isAdmin() ? 'Administration' : 'Mon salon';
-  await Promise.all([loadAgenda(), loadServices(), loadMetrics()]);
+
+  document.querySelectorAll('.dash-tab[data-tab="salons"], .dash-nav a[data-tab="salons"]').forEach(el => {
+    el.style.display = Auth.isAdmin() ? '' : 'none';
+  });
+
+  const initialLoaders = [loadAgenda(), loadServices(), loadMetrics()];
+  if (Auth.isAdmin()) initialLoaders.push(loadSalons());
+  await Promise.all(initialLoaders);
 });
 
 // ── Tabs ──────────────────────────────────────────────────
 function switchTab(tabId) {
+  if (tabId === 'salons' && !Auth.isAdmin()) return;
+
   document.querySelectorAll('.dash-tab, .dash-panel').forEach(el => {
     el.classList.remove('active');
     if (el.tagName === 'BUTTON') el.setAttribute('aria-selected', 'false');
@@ -60,6 +69,7 @@ function switchTab(tabId) {
 
   if (tabId === 'clients')  loadAllRdv();
   if (tabId === 'horaires') openHorairesTab();
+  if (tabId === 'salons')   loadSalons();
 }
 
 document.querySelectorAll('.dash-tab').forEach(btn =>
@@ -355,6 +365,34 @@ function renderServiceRow(s) {
 }
 
 // Ligne d'erreur générique pour un tableau (colspan variable)
+function renderLoadingRow(colspan) {
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = colspan;
+  const loader = document.createElement('div');
+  loader.className = 'loader';
+  const spinner = document.createElement('div');
+  spinner.className = 'spinner';
+  const label = document.createElement('span');
+  label.textContent = 'Chargement…';
+  loader.append(spinner, label);
+  td.appendChild(loader);
+  tr.appendChild(td);
+  return tr;
+}
+
+function renderEmptyRow(message, colspan) {
+  const tr = document.createElement('tr');
+  const td = document.createElement('td');
+  td.colSpan = colspan;
+  td.style.textAlign = 'center';
+  td.style.color = 'var(--text-muted)';
+  td.style.padding = '2rem';
+  td.textContent = message;
+  tr.appendChild(td);
+  return tr;
+}
+
 function renderErrorRow(message, colspan) {
   const tr = document.createElement('tr');
   const td = document.createElement('td');
@@ -792,5 +830,298 @@ document.getElementById('serviceForm').addEventListener('submit', async e => {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Enregistrer';
+  }
+});
+
+// ── Rendu et logique salons admin ─────────────────────────
+function salonStatusInfo(s) {
+  if (s.archived_at) return { label: 'Archivé', cls: 'badge--archived' };
+  if (Number(s.is_active) === 1) return { label: 'Actif', cls: 'badge--active' };
+  return { label: 'Inactif', cls: 'badge--inactive' };
+}
+
+// Construit une ligne <tr> de la table des salons en évitant toute injection HTML
+function renderSalonRow(s) {
+  const tr = document.createElement('tr');
+
+  const nameTd = document.createElement('td');
+  const strong = document.createElement('strong');
+  strong.textContent = s.name;
+  nameTd.appendChild(strong);
+
+  const addressTd = document.createElement('td');
+  addressTd.textContent = s.address || '—';
+
+  const phoneTd = document.createElement('td');
+  phoneTd.textContent = s.phone || '—';
+
+  const coordsTd = document.createElement('td');
+  coordsTd.textContent = (s.latitude !== null && s.longitude !== null)
+    ? `${parseFloat(s.latitude).toFixed(4)}, ${parseFloat(s.longitude).toFixed(4)}`
+    : '—';
+
+  const statusTd = document.createElement('td');
+  const { label, cls } = salonStatusInfo(s);
+  const badge = document.createElement('span');
+  badge.className = `badge ${cls}`;
+  badge.textContent = label;
+  statusTd.appendChild(badge);
+
+  const actionsTd = document.createElement('td');
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn-icon';
+  editBtn.textContent = '✏️ Modifier';
+  editBtn.dataset.editSalon = s.id;
+  editBtn.dataset.salon = JSON.stringify(s);
+  actionsTd.appendChild(editBtn);
+
+  // Pas d'action de statut pour un salon archivé (terminal, cf. backend)
+  if (!s.archived_at) {
+    const statusBtn = document.createElement('button');
+    statusBtn.className = 'btn-icon';
+    statusBtn.style.marginLeft = '.5rem';
+    if (Number(s.is_active) === 1) {
+      statusBtn.textContent = '⏸ Désactiver';
+      statusBtn.dataset.statusSalon = s.id;
+      statusBtn.dataset.targetActive = '0';
+    } else {
+      statusBtn.textContent = '▶ Réactiver';
+      statusBtn.dataset.statusSalon = s.id;
+      statusBtn.dataset.targetActive = '1';
+    }
+    actionsTd.appendChild(statusBtn);
+
+    const archiveBtn = document.createElement('button');
+    archiveBtn.className = 'btn-icon btn-icon--danger';
+    archiveBtn.style.marginLeft = '.5rem';
+    archiveBtn.textContent = '🗄 Archiver';
+    archiveBtn.dataset.archiveSalon = s.id;
+    archiveBtn.dataset.name = s.name;
+    actionsTd.appendChild(archiveBtn);
+  }
+
+  if (s.can_delete) {
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn-icon btn-icon--danger';
+    deleteBtn.style.marginLeft = '.5rem';
+    deleteBtn.textContent = '🗑 Supprimer';
+    deleteBtn.dataset.deleteSalon = s.id;
+    deleteBtn.dataset.name = s.name;
+    actionsTd.appendChild(deleteBtn);
+  }
+
+  tr.append(nameTd, addressTd, phoneTd, coordsTd, statusTd, actionsTd);
+  return tr;
+}
+
+function wireSalonRowActions(tbody) {
+  tbody.querySelectorAll('[data-edit-salon]').forEach(btn => {
+    btn.addEventListener('click', () => openSalonModal(JSON.parse(btn.dataset.salon)));
+  });
+  tbody.querySelectorAll('[data-status-salon]').forEach(btn => {
+    btn.addEventListener('click', () =>
+      changeSalonStatus(btn.dataset.statusSalon, Number(btn.dataset.targetActive))
+    );
+  });
+  tbody.querySelectorAll('[data-archive-salon]').forEach(btn => {
+    btn.addEventListener('click', () => archiveSalonHandler(btn.dataset.archiveSalon, btn.dataset.name));
+  });
+  tbody.querySelectorAll('[data-delete-salon]').forEach(btn => {
+    btn.addEventListener('click', () => deleteSalonHandler(btn.dataset.deleteSalon, btn.dataset.name));
+  });
+}
+
+// Remplit le <select> du formulaire d'invitation manager avec les salons actifs
+// non archivés. Préserve la sélection courante si elle reste valide.
+function populateInviteManagerSalonSelect(activeSalons) {
+  const select = document.getElementById('inviteManagerSalon');
+  const current = select.value;
+  select.replaceChildren();
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = activeSalons.length ? 'Choisir un salon' : 'Aucun salon actif';
+  select.appendChild(placeholder);
+
+  activeSalons.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name;
+    select.appendChild(opt);
+  });
+
+  if ([...select.options].some(o => o.value === current)) select.value = current;
+}
+
+async function loadSalons() {
+  const tbody = document.getElementById('salonsTableBody');
+  tbody.replaceChildren(renderLoadingRow(6));
+  try {
+    const salons = await apiRequest('/salons/admin');
+
+    if (!salons.length) {
+      tbody.replaceChildren(renderEmptyRow('Aucun salon.', 6));
+    } else {
+      tbody.replaceChildren(...salons.map(renderSalonRow));
+      wireSalonRowActions(tbody);
+    }
+
+    populateInviteManagerSalonSelect(salons.filter(s => Number(s.is_active) === 1 && !s.archived_at));
+  } catch (err) {
+    tbody.replaceChildren(renderErrorRow(err.message, 6));
+  }
+}
+
+function openSalonModal(s = null) {
+  document.getElementById('salonModalTitle').textContent = s ? 'Modifier le salon' : 'Ajouter un salon';
+  document.getElementById('salonId').value = s?.id || '';
+  document.getElementById('salonName').value = s?.name || '';
+  document.getElementById('salonAddress').value = s?.address || '';
+  document.getElementById('salonPhone').value = s?.phone || '';
+  document.getElementById('salonIsActive').value = s ? String(Number(s.is_active)) : '1';
+  document.getElementById('salonLatitude').value = (s?.latitude ?? '') === null ? '' : (s?.latitude ?? '');
+  document.getElementById('salonLongitude').value = (s?.longitude ?? '') === null ? '' : (s?.longitude ?? '');
+  document.getElementById('salonModalAlert').style.display = 'none';
+  document.getElementById('salonModal').classList.remove('hidden');
+}
+
+// Désactivation/réactivation. Si le backend refuse (409, RDV futurs), propose
+// la confirmation avec force:true — future_appointments vient d'err.data (cf.
+// modification apiRequest dans app.js).
+async function changeSalonStatus(id, targetActive) {
+  try {
+    await apiRequest(`/salons/${id}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ is_active: targetActive }),
+    });
+    showToast(targetActive ? 'Salon réactivé.' : 'Salon désactivé.');
+    loadSalons();
+  } catch (err) {
+    if (err.status === 409 && err.data?.future_appointments) {
+      const n = err.data.future_appointments;
+      const proceed = confirm(`${n} rendez-vous à venir seront affectés. Désactiver quand même ?`);
+      if (!proceed) return;
+      try {
+        await apiRequest(`/salons/${id}/status`, {
+          method: 'POST',
+          body: JSON.stringify({ is_active: targetActive, force: true }),
+        });
+        showToast('Salon désactivé.');
+        loadSalons();
+      } catch (err2) {
+        showToast(err2.message, 'error');
+      }
+      return;
+    }
+    showToast(err.message, 'error');
+  }
+}
+
+async function archiveSalonHandler(id, name) {
+  if (!confirm(`Archiver définitivement le salon "${name}" ? Cette action est irréversible.`)) return;
+  try {
+    await apiRequest(`/salons/${id}/archive`, { method: 'POST' });
+    showToast('Salon archivé.');
+    loadSalons();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteSalonHandler(id, name) {
+  if (!confirm(`Supprimer définitivement le salon "${name}" ? Cette action est irréversible.`)) return;
+  try {
+    await apiRequest(`/salons/${id}`, { method: 'DELETE' });
+    showToast('Salon supprimé.');
+    loadSalons();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ── Salons admin ─────────────────────────────────────────
+document.getElementById('btnAddSalon').addEventListener('click', () => openSalonModal());
+document.getElementById('salonModalClose').addEventListener('click', () =>
+  document.getElementById('salonModal').classList.add('hidden')
+);
+
+document.getElementById('salonForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const id = document.getElementById('salonId').value;
+  const name = document.getElementById('salonName').value.trim();
+  const address = document.getElementById('salonAddress').value.trim();
+  const phone = document.getElementById('salonPhone').value.trim();
+  const isActive = Number(document.getElementById('salonIsActive').value);
+  const latitudeRaw = document.getElementById('salonLatitude').value.trim();
+  const longitudeRaw = document.getElementById('salonLongitude').value.trim();
+
+  if (!name) return;
+
+  const latitude = latitudeRaw === '' ? null : Number(latitudeRaw);
+  const longitude = longitudeRaw === '' ? null : Number(longitudeRaw);
+  if ((latitude === null) !== (longitude === null)) {
+    const alert = document.getElementById('salonModalAlert');
+    alert.style.display = 'block';
+    alert.className = 'form-alert visible form-alert--error';
+    alert.textContent = 'Latitude et longitude doivent être fournies ensemble.';
+    return;
+  }
+
+  const payload = { name, address: address || null, phone: phone || null, is_active: isActive, latitude, longitude };
+  const btn = document.getElementById('salonSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Enregistrement…';
+
+  try {
+    if (id) {
+      await apiRequest(`/salons/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+      showToast('Salon mis à jour.');
+    } else {
+      await apiRequest('/salons', { method: 'POST', body: JSON.stringify(payload) });
+      showToast('Salon créé.');
+    }
+    document.getElementById('salonModal').classList.add('hidden');
+    loadSalons();
+  } catch (err) {
+    const alert = document.getElementById('salonModalAlert');
+    alert.style.display = 'block';
+    alert.className = 'form-alert visible form-alert--error';
+    alert.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enregistrer';
+  }
+});
+
+document.getElementById('inviteManagerForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('inviteManagerEmail').value.trim();
+  const first_name = document.getElementById('inviteManagerFirstName').value.trim();
+  const last_name = document.getElementById('inviteManagerLastName').value.trim();
+  const salon_id = Number(document.getElementById('inviteManagerSalon').value);
+
+  if (!email || !first_name || !last_name || !salon_id) return;
+
+  const btn = document.getElementById('inviteManagerSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Envoi…';
+
+  try {
+    await apiRequest('/auth/invite-manager', {
+      method: 'POST',
+      body: JSON.stringify({ email, first_name, last_name, salon_id }),
+    });
+    showToast('Invitation envoyée.');
+    document.getElementById('inviteManagerForm').reset();
+    loadSalons();
+  } catch (err) {
+    const alert = document.getElementById('inviteManagerAlert');
+    alert.style.display = 'block';
+    alert.className = 'form-alert visible form-alert--error';
+    alert.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Envoyer l\'invitation';
   }
 });

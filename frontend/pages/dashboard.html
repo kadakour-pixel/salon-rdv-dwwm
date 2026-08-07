@@ -31,6 +31,7 @@
         <a href="#" data-tab="services"><span class="dash-nav__icon">✂️</span> Prestations</a>
         <a href="#" data-tab="clients"><span class="dash-nav__icon">👥</span> Rendez-vous</a>
         <a href="#" data-tab="horaires"><span class="dash-nav__icon">⏰</span> Horaires</a>
+        <a href="#" data-tab="salons"><span class="dash-nav__icon">🏢</span> Salons</a>
       </nav>
     </aside>
 
@@ -51,6 +52,7 @@
         <button class="dash-tab" data-tab="services" role="tab" aria-selected="false">✂️ Prestations</button>
         <button class="dash-tab" data-tab="clients" role="tab" aria-selected="false">👥 Tous les RDV</button>
         <button class="dash-tab" data-tab="horaires" role="tab" aria-selected="false">⏰ Horaires</button>
+        <button class="dash-tab" data-tab="salons" role="tab" aria-selected="false">🏢 Salons</button>
       </div>
 
       <!-- Panel Agenda -->
@@ -106,6 +108,53 @@
         </div>
       </div>
 
+      <!-- Panel Salons (admin) -->
+      <div class="dash-panel" id="panel-salons" role="tabpanel">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+          <button class="btn btn-accent" id="btnAddSalon">+ Ajouter un salon</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:2rem;">
+          <table class="service-table" id="salonsTable">
+            <thead>
+              <tr><th>Nom</th><th>Adresse</th><th>Téléphone</th><th>Coordonnées</th><th>Statut</th><th></th></tr>
+            </thead>
+            <tbody id="salonsTableBody">
+              <tr><td colspan="6"><div class="loader"><div class="spinner"></div> Chargement…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3 style="font-family:var(--font-serif);font-size:1.1rem;margin-bottom:1.25rem;">Inviter un manager</h3>
+          <div id="inviteManagerAlert" style="display:none;" class="form-alert"></div>
+          <form id="inviteManagerForm" novalidate>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="inviteManagerFirstName">Prénom</label>
+                <input type="text" id="inviteManagerFirstName" required />
+              </div>
+              <div class="form-group">
+                <label for="inviteManagerLastName">Nom</label>
+                <input type="text" id="inviteManagerLastName" required />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="inviteManagerEmail">Email</label>
+              <input type="email" id="inviteManagerEmail" required />
+            </div>
+            <div class="form-group">
+              <label for="inviteManagerSalon">Salon</label>
+              <select id="inviteManagerSalon" required>
+                <option value="">Choisir un salon</option>
+              </select>
+            </div>
+            <div class="modal__actions" style="justify-content:flex-start;">
+              <button type="submit" class="btn btn-accent" id="inviteManagerSubmit">Envoyer l'invitation</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </main>
   </div>
 
@@ -158,6 +207,52 @@
         <div class="modal__actions">
           <button type="button" class="btn btn-outline" id="horairesModalClose">Annuler</button>
           <button type="submit" class="btn btn-accent" id="horairesSubmit">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal salon -->
+  <div class="modal-overlay hidden" id="salonModal" role="dialog" aria-modal="true" aria-labelledby="salonModalTitle">
+    <div class="modal">
+      <h3 id="salonModalTitle">Ajouter un salon</h3>
+      <div id="salonModalAlert" style="display:none;" class="form-alert"></div>
+      <form id="salonForm" novalidate>
+        <input type="hidden" id="salonId" />
+        <div class="form-group">
+          <label for="salonName">Nom</label>
+          <input type="text" id="salonName" placeholder="Ex : Salon Élégance Lille" required />
+        </div>
+        <div class="form-group">
+          <label for="salonAddress">Adresse</label>
+          <input type="text" id="salonAddress" placeholder="12 rue de l'Exemple, Lille" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="salonPhone">Téléphone</label>
+            <input type="tel" id="salonPhone" placeholder="03 20 00 00 00" />
+          </div>
+          <div class="form-group">
+            <label for="salonIsActive">Statut</label>
+            <select id="salonIsActive">
+              <option value="1">Actif</option>
+              <option value="0">Inactif</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="salonLatitude">Latitude</label>
+            <input type="number" id="salonLatitude" step="any" min="-90" max="90" placeholder="50.6292" />
+          </div>
+          <div class="form-group">
+            <label for="salonLongitude">Longitude</label>
+            <input type="number" id="salonLongitude" step="any" min="-180" max="180" placeholder="3.0573" />
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn-outline" id="salonModalClose">Annuler</button>
+          <button type="submit" class="btn btn-accent" id="salonSubmit">Enregistrer</button>
         </div>
       </form>
     </div>

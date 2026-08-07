@@ -105,6 +105,9 @@
 .badge--confirmed { background: var(--success-bg); color: var(--success); }
 .badge--pending   { background: #FFF8E7; color: #854F0B; }
 .badge--cancelled { background: var(--error-bg);   color: var(--error); }
+.badge--active    { background: var(--success-bg); color: var(--success); }
+.badge--inactive  { background: #FFF8E7; color: #854F0B; }
+.badge--archived  { background: var(--surface-2); color: var(--text-muted); }
 
 /* ── Loader spinner ──────────────────────────────────────── */
 .loader {

@@ -131,6 +131,8 @@ function renderSalonCard(s) {
   card.className = 'service-pick-card';
   card.dataset.id = s.id;
   card.dataset.name = s.name;
+  card.dataset.lat = s.latitude ?? '';
+  card.dataset.lng = s.longitude ?? '';
   card.setAttribute('role', 'radio');
   card.setAttribute('aria-checked', 'false');
   card.setAttribute('tabindex', '0');
@@ -151,6 +153,68 @@ function renderSalonCard(s) {
   return card;
 }
 
+// Carte Leaflet de l'étape salon : un marqueur par salon ayant des coordonnées.
+// Le clic sur un marqueur déclenche la même sélection qu'un clic sur la carte
+// correspondante dans #salonPickGrid (délègue au DOM plutôt que dupliquer la logique).
+let salonMapInstance = null;
+
+function renderSalonMap(salons) {
+  const mapEl = document.getElementById('salonPickMap');
+  const withCoords = salons.filter(s => s.latitude !== null && s.longitude !== null);
+
+  if (!withCoords.length) {
+    mapEl.classList.add('hidden');
+    return;
+  }
+
+  mapEl.classList.remove('hidden');
+
+  // mysql2 renvoie les DECIMAL en chaînes : parseFloat() obligatoire avant tout usage Leaflet.
+  const points = withCoords.map(s => ({
+    id: s.id,
+    name: s.name,
+    address: s.address || '',
+    lat: parseFloat(s.latitude),
+    lng: parseFloat(s.longitude),
+  }));
+
+  if (salonMapInstance) {
+    salonMapInstance.remove();
+    salonMapInstance = null;
+  }
+
+  salonMapInstance = L.map(mapEl);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(salonMapInstance);
+
+  const markers = points.map(p => {
+    const marker = L.marker([p.lat, p.lng]).addTo(salonMapInstance);
+    marker.bindPopup(`<strong>${escapeMapText(p.name)}</strong><br>${escapeMapText(p.address)}`);
+    marker.on('click', () => {
+      const card = document.querySelector(`#salonPickGrid [data-id="${p.id}"]`);
+      if (card) card.click();
+    });
+    return marker;
+  });
+
+  if (markers.length === 1) {
+    salonMapInstance.setView([points[0].lat, points[0].lng], 14);
+  } else {
+    const group = L.featureGroup(markers);
+    salonMapInstance.fitBounds(group.getBounds().pad(0.2));
+  }
+}
+
+// Échappement minimal pour le HTML injecté dans les popups Leaflet (bindPopup ne
+// passe pas par textContent) : les noms/adresses viennent de l'API, jamais de saisie
+// utilisateur libre à ce stade, mais on protège quand même par principe XSS du projet.
+function escapeMapText(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 // Résout le salon : auto-sélection silencieuse si un seul salon actif, sinon
 // affiche la grille de choix. Retourne true si résolu automatiquement (aucune
 // action utilisateur nécessaire), false si l'étape doit rester visible.
@@ -166,15 +230,26 @@ async function resolveSalon() {
     }
 
     if (salons.length === 1) {
-      state.salon = { id: salons[0].id, name: salons[0].name };
+      state.salon = {
+        id: salons[0].id,
+        name: salons[0].name,
+        latitude: salons[0].latitude,
+        longitude: salons[0].longitude,
+      };
       setStepVisible('salon', false);
       return true;
     }
 
     setStepVisible('salon', true);
     grid.replaceChildren(...salons.map(renderSalonCard));
+    renderSalonMap(salons);
     wireSelectableGrid(grid, card => {
-      state.salon = { id: card.dataset.id, name: card.dataset.name };
+      state.salon = {
+        id: card.dataset.id,
+        name: card.dataset.name,
+        latitude: card.dataset.lat || null,
+        longitude: card.dataset.lng || null,
+      };
       resetFrom('salon');
       const btn = document.getElementById('btnSalonNext');
       btn.disabled = true;
@@ -490,6 +565,7 @@ function buildRecap() {
   );
 
   document.getElementById('recapContent').replaceChildren(...rows);
+  renderRecapMap();
 }
 
 // Construit une ligne du récapitulatif en évitant toute injection HTML (nom de prestation venant de l'API)
@@ -502,6 +578,40 @@ function renderRecapRow(label, value) {
   valueSpan.textContent = value;
   row.append(labelSpan, valueSpan);
   return row;
+}
+
+// Carte Leaflet du récapitulatif : marqueur unique, non cliquable, juste informatif.
+let recapMapInstance = null;
+
+function renderRecapMap() {
+  const mapEl = document.getElementById('recapMap');
+
+  if (state.salon.latitude === null || state.salon.longitude === null) {
+    mapEl.classList.add('hidden');
+    return;
+  }
+
+  mapEl.classList.remove('hidden');
+
+  // mysql2 renvoie les DECIMAL en chaînes : parseFloat() obligatoire avant tout usage Leaflet.
+  const lat = parseFloat(state.salon.latitude);
+  const lng = parseFloat(state.salon.longitude);
+
+  if (recapMapInstance) {
+    recapMapInstance.remove();
+    recapMapInstance = null;
+  }
+
+  recapMapInstance = L.map(mapEl, { zoomControl: false, dragging: false, scrollWheelZoom: false }).setView([lat, lng], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(recapMapInstance);
+  L.marker([lat, lng]).addTo(recapMapInstance).bindPopup(escapeMapText(state.salon.name));
+
+  // Leaflet calcule mal ses dimensions si le conteneur était masqué (display:none)
+  // au moment de l'init — ce panel n'est affiché qu'après buildRecap(), invalidateSize()
+  // force un recalcul propre après le prochain repaint.
+  setTimeout(() => recapMapInstance.invalidateSize(), 0);
 }
 
 document.getElementById('btnStep3Back').addEventListener('click', () => goStep(prevStep('confirm')));

@@ -131,6 +131,31 @@
     .recap-row:last-child { border: none; font-weight: 600; font-size: 1rem; }
     .recap-row span:first-child { color: var(--text-muted); }
 
+    /* ── Carte Leaflet (E2) ─── */
+    .salon-map {
+      height: 220px;
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+      border: 1.5px solid var(--border);
+    }
+    .recap-map {
+      height: 180px;
+      border-radius: var(--radius-md);
+      margin-top: 1rem;
+      border: 1.5px solid var(--border);
+    }
+    .salon-map.hidden, .recap-map.hidden { display: none; }
+
+    /* Popup Leaflet harmonisé avec la charte graphique du projet */
+    .leaflet-popup-content-wrapper {
+      border-radius: var(--radius-sm);
+      font-family: var(--font-main);
+    }
+    .leaflet-popup-content {
+      font-size: .85rem;
+      margin: .6rem .8rem;
+    }
+
     @media (max-width: 600px) {
       .stepper__label { display: none; }
       .stepper__step:not(:last-child)::after { margin: 0 .4rem; }

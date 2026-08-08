@@ -106,6 +106,21 @@ async function create(req, res) {
   }
 
   try {
+    // Anti-abus : un client ne peut pas monopoliser les créneaux avec un nombre
+    // illimité de RDV futurs. Seuil arbitraire (5), portée globale tous salons
+    // confondus. Complémentaire au rate-limiting (qui limite le volume de
+    // requêtes, pas le volume de RDV valides déjà accumulés en base).
+    const MAX_ACTIVE_APPOINTMENTS = 5;
+
+    const [[activeCount]] = await db.execute(
+      `SELECT COUNT(*) AS c FROM appointments
+       WHERE user_id = ? AND status != 'cancelled' AND start_at > NOW()`,
+      [user_id]
+    );
+    if (Number(activeCount.c) >= MAX_ACTIVE_APPOINTMENTS) {
+      return res.status(409).json({ error: 'Nombre maximum de rendez-vous à venir atteint' });
+    }
+
     // salon_id : absent → repli 1 ; fourni → doit être un entier positif.
     // Dans tous les cas, l'état actif du salon est vérifié en base.
     let salonId = 1;

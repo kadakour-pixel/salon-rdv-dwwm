@@ -291,6 +291,60 @@ describe('POST /api/appointments', () => {
 
 });
 
+describe('POST /api/appointments — limite de RDV actifs (MAX_ACTIVE_APPOINTMENTS)', () => {
+  // Date future dédiée à ces tests : le DATE existant (2026-07-15) est déjà
+  // passé par rapport à NOW(), donc inutilisable pour tester start_at > NOW().
+  // 2027-07-14 tombe le même jour de semaine (mercredi, day_of_week=3) que
+  // DATE — 364 jours plus tard, soit 52 semaines pile — et correspond donc à
+  // la même fixture availabilities du beforeEach, sans avoir à en ajouter une.
+  const FUTURE_DATE = '2027-07-14';
+
+  // ── Cas 1 : blocage au 6e RDV actif ──────────────────────────────
+  it('retourne 409 après 5 RDV actifs, avec le message de quota', async () => {
+    const times = ['09:00:00', '10:00:00', '11:00:00', '12:00:00', '13:00:00'];
+    for (const t of times) {
+      const res = await request(app)
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ service_id: serviceId, start_at: `${FUTURE_DATE} ${t}` });
+      expect(res.status).toBe(201);
+    }
+
+    const sixth = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ service_id: serviceId, start_at: `${FUTURE_DATE} 14:00:00` });
+
+    expect(sixth.status).toBe(409);
+    expect(sixth.body.error).toBe('Nombre maximum de rendez-vous à venir atteint');
+  });
+
+  // ── Cas 2 : un RDV annulé ne compte pas dans le quota ────────────
+  it('un RDV annulé libère de la place dans le quota', async () => {
+    const times = ['09:00:00', '10:00:00', '11:00:00', '12:00:00', '13:00:00'];
+    const ids = [];
+    for (const t of times) {
+      const res = await request(app)
+        .post('/api/appointments')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ service_id: serviceId, start_at: `${FUTURE_DATE} ${t}` });
+      ids.push(res.body.id);
+    }
+
+    await request(app)
+      .delete(`/api/appointments/${ids[0]}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    const res = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ service_id: serviceId, start_at: `${FUTURE_DATE} 14:00:00` });
+
+    expect(res.status).toBe(201);
+  });
+
+});
+
 describe('GET /api/appointments/me', () => {
 
   // ── Miroir de getAll (Lot D) : stylist_name et salon_name via LEFT JOIN ──

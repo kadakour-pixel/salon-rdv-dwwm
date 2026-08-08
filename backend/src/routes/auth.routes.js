@@ -5,15 +5,16 @@ const { register, login, getMe, updateMe, verifyEmail, resendVerification, invit
 // ⚠️ Le middleware exporté par auth.middleware.js s'appelle "authenticate"
 //    (et non "verifyToken", qui était undefined → plantage au démarrage).
 const { authenticate, requireRole } = require('../middlewares/auth.middleware');
+const { authLimiter } = require('../middlewares/rate-limit.middleware');
 
 // POST /api/auth/register
-router.post('/register', register);
+router.post('/register', authLimiter, register);
 // POST /api/auth/login
-router.post('/login', login);
+router.post('/login', authLimiter, login);
 // GET /api/auth/verify  — clic sur le lien reçu par mail
 router.get('/verify', verifyEmail);
 // POST /api/auth/resend-verification — renvoyer le mail de vérification
-router.post('/resend-verification', resendVerification);
+router.post('/resend-verification', authLimiter, resendVerification);
 // GET /api/auth/me  — profil du client connecté
 router.get('/me', authenticate, getMe);
 // PUT /api/auth/me  — modification du profil

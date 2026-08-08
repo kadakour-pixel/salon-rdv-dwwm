@@ -22,6 +22,9 @@ const salonRoutes        = require('./src/routes/salon.routes');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+// Nécessaire derrière un proxy inverse (alwaysdata) : sans ça, express-rate-limit
+// et req.ip verraient tous les clients comme une seule IP (celle du proxy).
+app.set('trust proxy', 1);
 
 // ── Middlewares globaux ───────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));

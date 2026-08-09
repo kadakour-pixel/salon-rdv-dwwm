@@ -1,190 +1,112 @@
 # Plan de tests — Salon Élégance
-## Projet DWWM — Application de prise de rendez-vous
 
-**Version :** 5.0  
-**Date :** 1 juillet 2026  
-**Résultat global : 44 tests manuels + 12 tests automatisés ✅**
+**Version :** 6.0
+**Date :** 08 août 2026
+**Résultat global : 44 tests manuels (base mono-salon, historique) + 182 tests automatisés (Jest/Supertest, état actuel) ✅**
 
----
-
-## 1. Parcours client (T01–T13)
-
-### 1.1 Authentification
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T01 | Inscription avec email valide | Prénom: Test, Nom: Client, Email: test@client.fr, MDP: password123 | Compte créé, JWT retourné, redirection vers reserver.html | ✅ PASS |
-| T02 | Inscription avec email déjà utilisé | Email: test@client.fr (déjà enregistré) | Message "Email déjà utilisé" (409) | ✅ PASS |
-| T03 | Inscription avec mot de passe < 8 caractères | MDP: abc | Message "8 caractères minimum" côté client | ✅ PASS |
-| T04 | Connexion avec bons identifiants | Email: test@client.fr, MDP: password123 | JWT stocké, redirection vers mes-rdv.html | ✅ PASS |
-| T05 | Connexion avec mauvais identifiants | Email: test@client.fr, MDP: mauvaismdp | Message "Identifiants incorrects" (401) | ✅ PASS |
-| T06 | Accès à mes-rdv.html sans être connecté | Accès direct URL sans token | Redirection vers login.html | ✅ PASS |
-
-### 1.2 Réservation
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T07 | Sélectionner une prestation et avancer | Clic sur "Coupe femme" | Étape 2 activée, prestation mémorisée | ✅ PASS |
-| T08 | Sélectionner une date passée | Clic sur date antérieure à aujourd'hui | Date non cliquable | ✅ PASS |
-| T09 | Sélectionner une date valide et voir les créneaux | Date future (jour ouvré) | Créneaux disponibles chargés depuis l'API | ✅ PASS |
-| T10 | Réserver un créneau disponible | Créneau 11:30, Coupe femme | RDV enregistré en BDD, redirection mes-rdv.html | ✅ PASS |
-| T11 | Réserver un créneau déjà pris | Même créneau que T10 | Créneau absent de la liste (non proposé) | ✅ PASS |
-| T12 | Annuler un RDV à venir | Clic "Annuler" + confirmation modal | Statut passe à "cancelled", créneau libéré | ✅ PASS |
-| T13 | Filtrer ses RDV par statut | Filtres "À venir" / "Annulés" | Liste filtrée correctement | ✅ PASS |
+> À partir de l'introduction de Jest/Supertest (1er juillet 2026), la couverture de
+> non-régression est assurée par les tests automatisés, rejoués à chaque évolution.
+> Les tests manuels T01–T44 ci-dessous restent comme trace historique de la phase
+> pré-automatisation et de la validation de production initiale (juin 2026).
 
 ---
 
-## 2. Parcours administrateur (T14–T20)
+## 1. Tests manuels historiques (T01–T44)
 
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T14 | Connexion avec le compte admin | Email: admin@salon.fr, MDP: Admin1234! | Redirection vers dashboard.html | ✅ PASS |
-| T15 | Accès dashboard avec un compte client | Connexion client + accès URL dashboard | Redirection vers login.html | ✅ PASS |
-| T16 | Navigation agenda jour suivant/précédent | Clic ‹ et › sur l'agenda | RDV du jour concerné chargés | ✅ PASS |
-| T17 | Ajouter une prestation | Nom: Lissage, Durée: 90min, Prix: 85€ | Apparaît dans le tableau et dans /api/services | ✅ PASS |
-| T18 | Modifier une prestation | Prix Lissage → 90€ | Changements enregistrés en BDD | ✅ PASS |
-| T19 | Désactiver une prestation | Clic "Désactiver" sur Lissage | Disparaît du catalogue client (is_active = 0) | ✅ PASS |
-| T20 | Filtrer les RDV par date | Date: 2026-06-11 | Seuls les RDV de cette date s'affichent | ✅ PASS |
-
----
-
-## 3. Sécurité API (T21–T24)
-
-| ID | Description | Méthode de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T21 | Appel POST /api/appointments sans token | Console navigateur — fetch sans Authorization | 401 Unauthorized + "Token manquant ou invalide" | ✅ PASS |
-| T22 | Appel POST /api/services avec token client | Console navigateur — fetch avec token client | 403 Forbidden + "Accès interdit" | ✅ PASS |
-| T23 | Annuler le RDV d'un autre client | Revue de code appointment.controller.js | 403 Forbidden (vérification user_id) | ✅ PASS |
-| T24 | Token falsifié ou expiré | Console navigateur — fetch avec "tokenbidonXXX" | 401 Unauthorized + "Token expiré ou invalide" | ✅ PASS |
-
----
-
-## 4. Tests responsive (T25–T27)
-
-| ID | Description | Outil | Résultat attendu | Résultat obtenu |
-|----|-------------|-------|------------------|-----------------|
-| T25 | Page d'accueil sur mobile (< 768px) | Chrome DevTools — iPhone SE | Burger menu, hero sans image, CTA pleine largeur | ✅ PASS |
-| T26 | Page réservation sur mobile | Chrome DevTools — iPhone SE | Stepper visible, calendrier et créneaux lisibles | ✅ PASS |
-| T27 | Dashboard admin sur mobile | Chrome DevTools — iPhone SE | Sidebar masquée, métriques et contenu lisibles | ✅ PASS |
-
----
-
-## 5. Horaires et fermetures exceptionnelles (T28–T30)
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T28 | Modifier les horaires d'un jour (US21) | Onglet Horaires → Modifier Lundi → 10:00–18:00 | Horaires mis à jour en BDD, tableau rafraîchi | ✅ PASS |
-| T29 | Bloquer une date exceptionnelle (US22) | Onglet Horaires → Date: 2026-12-25 → "Bloquer ce jour" | Date ajoutée dans la liste bloquée, aucun créneau proposé ce jour | ✅ PASS |
-| T30 | Débloquer une date (US22) | Clic "✕ Débloquer" sur 2026-12-25 | Date retirée, créneaux à nouveau proposés | ✅ PASS |
-
----
-
-## 6. Profil client (T31)
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T31 | Modifier son profil (US23) | Page Mon profil → Prénom: Marie, Nom: Durand, Email: marie@test.fr | Message "Profil mis à jour", données modifiées en BDD | ✅ PASS |
-
----
-
-## 7. Validation et sécurité (T32–T34)
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T32 | Créer prestation avec durée négative | POST /api/services avec duration_minutes: -30 | 400 + "La durée doit être un entier positif" | ✅ PASS |
-| T33 | Créer prestation avec prix négatif | POST /api/services avec price: -10 | 400 + "Le prix doit être un nombre positif" | ✅ PASS |
-| T34 | Redirection sur token expiré | Modifier le token dans localStorage + rafraîchir | Redirection vers login.html, localStorage vidé | ✅ PASS |
-
----
-
-## 8. Revue de code et corrections (T35–T38)
-
-| ID | Description | Données de test | Résultat attendu | Résultat obtenu |
-|----|-------------|-----------------|------------------|-----------------|
-| T35 | Erreur gérée lors de la désactivation d'une prestation | Couper le backend + clic "Désactiver" sur une prestation | Message d'erreur affiché (pas de crash silencieux) | ✅ PASS |
-| T36 | Admin redirigé vers dashboard depuis la page profil | Connexion admin → accès direct `pages/profil.html` | Redirection vers `dashboard.html` (pas login) | ✅ PASS |
-| T37 | Date correcte dans les métriques du dashboard | Vérification visuelle de la date affichée dans l'agenda | Date du jour affichée correctement | ✅ PASS |
-| T38 | Date correcte dans le calendrier de réservation | Vérification visuelle de la date dans le calendrier | Jour actuel correctement mis en surbrillance | ✅ PASS |
-
----
-
-## 9. Déploiement en production (T39–T44)
-
-| ID | Description | Environnement | Résultat attendu | Résultat obtenu |
-|----|-------------|---------------|------------------|-----------------|
-| T39 | Inscription et connexion client en production | https://kadakour.alwaysdata.net | Compte créé, JWT retourné, redirection | ✅ PASS |
-| T40 | Réservation en 3 étapes en production | https://kadakour.alwaysdata.net | RDV enregistré, redirection mes-rdv | ✅ PASS |
-| T41 | Mes RDV + annulation en production | https://kadakour.alwaysdata.net | Liste affichée, annulation fonctionnelle | ✅ PASS |
-| T42 | Dashboard admin en production | https://kadakour.alwaysdata.net | Agenda, métriques, prestations, tous les RDV | ✅ PASS |
-| T43 | Horaires et fermetures exceptionnelles en production | https://kadakour.alwaysdata.net | Modification horaires, blocage/déblocage date | ✅ PASS |
-| T44 | Profil client en production | https://kadakour.alwaysdata.net | Affichage et modification du profil | ✅ PASS |
-
----
-
-## 10. Bugs détectés et corrigés
-
-| Bug | Description | Correction apportée |
-|-----|-------------|---------------------|
-| T03 | Attribut `minlength="8"` bloquait la validation JS | Suppression de `minlength` dans `login.html` |
-| T10/T11 | `end_at` calculé en UTC → décalage d'1h | Calcul sans `toISOString()` dans `appointment.controller.js` |
-| T12 | Bouton "Annuler" absent pour les RDV passés dans la journée | Condition `isFuture` assouplie dans `mes-rdv.js` |
-| T14 | Hash bcrypt générique incompatible avec la version Node locale | Hash régénéré localement et mis à jour en BDD et `schema.sql` |
-| Navbar | Lien Dashboard pointait vers `pages/pages/dashboard.html` | Fonction `pagesPrefix()` ajoutée dans `app.js` |
-| Mobile | Burger menu n'affichait pas les liens après connexion | Initialisation du burger après injection dynamique dans `app.js` |
-| Dashboard | Spinner infini dans l'onglet Horaires via la nav latérale | Centralisation du chargement des données dans `switchTab()` |
-| Profil | Message de confirmation invisible sur `profil.html` | Déplacement de `.form-alert` de `login.css` vers `pages.css` |
-| T35 | Désactivation prestation sans try/catch → crash silencieux | Ajout de try/catch dans `dashboard.js` |
-| T36 | Admin redirigé vers login au lieu de dashboard sur profil.html | Séparation des conditions dans `profil.js` |
-| T37-T38 | `toISOString()` renvoie date UTC, décalage possible la nuit | Remplacement par date locale dans `dashboard.js` et `reserver.js` |
-| Dates bloquées | Dates passées persistaient dans l'onglet Horaires du dashboard | Filtre SQL `blocked_date >= CURDATE()` dans `availability.controller.js` |
-
----
-
-## 11. Tests automatisés (Jest + Supertest)
-
-Outils : **Jest** (framework de test Node.js) + **Supertest** (simulation de requêtes HTTP).  
-Exécution : `npm test` depuis le dossier `backend/` — BDD isolée `salon_rdv_test`.
-
-### Tests unitaires — `generateSlots()`
+### 1.1 Authentification (T01–T06)
 
 | ID | Description | Résultat |
 |----|-------------|----------|
-| U01 | 18 créneaux générés sur 9h–18h, pas 30 min, durée 30 min | ✅ PASS |
-| U02 | Créneau dont la fin coïncide exactement avec la fermeture : inclus | ✅ PASS |
-| U03 | Créneau dont la fin dépasse la fermeture : exclu | ✅ PASS |
-| U04 | Créneau occupé par un RDV existant : exclu | ✅ PASS |
-| U05 | Chevauchement partiel (RDV à cheval) : les deux créneaux exclus | ✅ PASS |
+| T01 | Inscription avec email valide | ✅ PASS |
+| T02 | Inscription avec email déjà utilisé | ✅ PASS |
+| T03 | Inscription avec mot de passe < 8 caractères | ✅ PASS |
+| T04 | Connexion avec bons identifiants | ✅ PASS |
+| T05 | Connexion avec mauvais identifiants | ✅ PASS |
+| T06 | Accès à une page protégée sans être connecté | ✅ PASS |
 
-### Tests d'intégration
+### 1.2 Réservation (T07–T13)
 
 | ID | Description | Résultat |
 |----|-------------|----------|
-| I01 | POST /api/auth/login — succès : 200 + token + role | ✅ PASS |
-| I02 | POST /api/auth/login — mauvais MDP : 401 | ✅ PASS |
-| I03 | POST /api/auth/login — email inconnu : 401 (même message) | ✅ PASS |
-| I04 | POST /api/appointments — créneau libre : 201 + start_at/end_at corrects | ✅ PASS |
-| I05 | POST /api/appointments — créneau déjà pris : 409 | ✅ PASS |
-| I06 | POST /api/appointments sans token : 401 | ✅ PASS |
-| I07 | POST /api/services avec token client (route admin) : 403 | ✅ PASS |
+| T07 | Sélectionner une prestation et avancer | ✅ PASS |
+| T08 | Sélectionner une date passée | ✅ PASS |
+| T09 | Sélectionner une date valide et voir les créneaux | ✅ PASS |
+| T10 | Réserver un créneau disponible | ✅ PASS |
+| T11 | Réserver un créneau déjà pris | ✅ PASS |
+| T12 | Annuler un RDV à venir | ✅ PASS |
+| T13 | Filtrer ses RDV par statut | ✅ PASS |
+
+### 1.3 Parcours admin (T14–T20)
+
+| ID | Description | Résultat |
+|----|-------------|----------|
+| T14–T20 | Connexion admin, protection dashboard, agenda, CRUD prestations, filtre RDV | ✅ PASS (7/7) |
+
+### 1.4 Sécurité API (T21–T24), Responsive (T25–T27), Horaires (T28–T30), Profil (T31), Validation (T32–T34), Revue de code (T35–T38), Déploiement initial (T39–T44)
+
+Détail conservé de la version précédente du plan de tests. **44/44 PASS.**
 
 ---
 
-## 12. Résumé
+## 2. Tests automatisés (Jest + Supertest) — progression
 
-| Catégorie | Tests | Passés | Échoués |
-|-----------|-------|--------|---------|
-| Parcours client | 13 | 13 | 0 |
-| Parcours admin | 7 | 7 | 0 |
-| Sécurité API | 4 | 4 | 0 |
-| Responsive | 3 | 3 | 0 |
-| Horaires et fermetures | 3 | 3 | 0 |
-| Profil client | 1 | 1 | 0 |
-| Validation et sécurité | 3 | 3 | 0 |
-| Revue de code et corrections | 4 | 4 | 0 |
-| Déploiement en production | 6 | 6 | 0 |
-| **Total manuel** | **44** | **44** | **0** |
-| Tests unitaires (Jest) | 5 | 5 | 0 |
-| Tests d'intégration (Supertest) | 7 | 7 | 0 |
-| **Total automatisé** | **12** | **12** | **0** |
+Exécution : `npx jest --runInBand --forceExit` depuis `backend/`, base isolée
+`salon_rdv_test` (`backend/.env.test` chargé par `tests/setup.js` — mécanisme à ne
+jamais modifier). Après chaque migration : rejouer `tests/schema_test.sql`.
 
-> **Taux de réussite : 100%** — 44 tests manuels + 12 tests automatisés. Application validée, déployée et prête pour la soutenance.
+| Étape | Fonctionnalité couverte | Total tests |
+|-------|--------------------------|--------------|
+| 1 juillet 2026 | Mise en place (unitaires `generateSlots` + intégration login/RDV/auth) | 12 |
+| Juillet 2026 | + Avis clients (`POST/GET/reviewable/stats`, XSS, conflits) | 56 |
+| 29 juillet 2026 | + Multi-salons backend (salons, coiffeurs, disponibilités, RDV, services, rôle manager) | 95 |
+| 01–02 août 2026 | + `salon_name` enrichi, invitations manager (`action_tokens`, `set-password`) | 131 |
+| 03 août 2026 | + Administration des salons (états, migration 007, faille suspension corrigée) | 179 |
+| 08 août 2026 | + Rate-limiting, limite de RDV actifs par client | **182** |
+
+**État actuel : 182/182 tests verts.**
+
+### 2.1 Catégories couvertes en détail
+
+| Catégorie | Exemples de cas couverts |
+|-----------|---------------------------|
+| Unitaires `generateSlots` | Créneaux normaux, limite de fermeture, débordement, chevauchement total/partiel |
+| Auth | Login succès/échec, inscription, vérification e-mail, cooldown resend, token invalide |
+| RDV | Création succès/conflit, cohérences croisées salon/coiffeur/service (400), chevauchement scopé par coiffeur, limite de 5 RDV actifs (blocage + libération par annulation) |
+| Salons | CRUD, états (actif/suspendu/archivé), coordonnées (validation bornes, coordonnée partielle → 400), `can_delete`, suppression sur salon peuplé (409) vs vierge |
+| Manager | Login réel, scope base (`resolveSalonScope`), 403 hors salon, listes filtrées |
+| Avis | Éligibilité SQL, conflit `ER_DUP_ENTRY`, minimisation RGPD, stats vide |
+| Invitations | Génération jeton, expiration, `set-password`, invalidation lors de l'archivage |
+| Rate-limiting | Activation forcée hors `JEST_WORKER_ID` le temps du test, désactivation restaurée après |
+| Sécurité transverse | Routes protégées sans token (401), routes admin avec token client (403) |
+
+---
+
+## 3. Bugs détectés et corrigés (chronologique)
+
+| Bug | Description | Correction |
+|-----|-------------|------------|
+| T03 | `minlength="8"` bloquait la validation JS | Suppression de l'attribut |
+| T10/T11 | `end_at` calculé en UTC → décalage d'1h | Calcul sans `toISOString()` |
+| T12 | Bouton "Annuler" absent pour les RDV passés dans la journée | Condition `isFuture` assouplie |
+| Navbar | Lien Dashboard mal construit | Fonction `pagesPrefix()` |
+| Dashboard | Spinner infini onglet Horaires | Centralisation dans `switchTab()` |
+| T37–T38 | Décalage UTC dans les métriques et le calendrier | Date locale au lieu de `toISOString()` |
+| Dates bloquées | Dates passées persistantes | Filtre SQL `blocked_date >= CURDATE()` |
+| `availabilities` | Doublons silencieux (absence d'index UNIQUE) | Dédoublonnage + index composites (migration 005) |
+| RDV | Salon suspendu restait réservable par défaut | Vérification systématique salon + coiffeur actifs |
+| CSS | `.form-error` écrasé par `.login-form-panel p` | Sélecteur `:not(.form-error)` |
+| `blocked_date` | Décalage UTC (objet Date mysql2) | `DATE_FORMAT` en SELECT pour renvoyer une chaîne |
+
+---
+
+## 4. Résumé
+
+| Catégorie | Résultat |
+|-----------|----------|
+| Tests manuels historiques (T01–T44) | 44/44 ✅ |
+| Tests automatisés (état actuel) | 182/182 ✅ |
+
+> Application testée en continu à chaque évolution, base de non-régression
+> automatisée. Reste à valider : vérifications manuelles post-déploiement une fois
+> les évolutions poussées sur alwaysdata (salon/invitation/set-password/login
+> manager/suspension/archivage).

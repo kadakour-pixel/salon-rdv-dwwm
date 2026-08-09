@@ -1,71 +1,83 @@
 # Todo — Salon Élégance
 
-**Dernière mise à jour :** 1 juillet 2026  
-**État du MVP :** 44 tests manuels + 12 tests automatisés (Jest/Supertest) — 23/23 user stories — déployé sur alwaysdata
+**Dernière mise à jour :** 08 août 2026
+**État :** 182 tests automatisés verts · 36/36 user stories · titre DWWM obtenu (soutenance
+réussie le 29/07/2026) · projet poursuivi comme portfolio · déployé sur alwaysdata mais
+**évolutions post-soutenance pas encore poussées en production**
 
 ---
 
-## Priorité 1 — Fonctionnalités à compléter pour la présentation
+## Priorité 1 — Déploiement (bloquant avant la prochaine démo/usage réel)
 
-### [x] UI admin — Gestion des horaires d'ouverture (US21)
-- Ajouter un onglet "Horaires" dans `dashboard.html`
-- Afficher les 7 jours avec les plages actuelles
-- Permettre la modification de `open_time` / `close_time` pour chaque jour
-- Appeler `PUT /api/availabilities/:dayOfWeek` (backend déjà prêt)
-- Permettre de marquer un jour comme fermé (supprimer ou laisser vide)
+### [ ] Déploiement alwaysdata des évolutions post-soutenance
+Plan en 8 phases (identifié en session antérieure, détail complet à reconstituer) :
+- [ ] Phase 1 — à préciser
+- [ ] Phase 2 — à préciser
+- [x] Phase 3 — migrations 001→007 (prêtes, jouées en dev uniquement)
+- [x] Phase 4 — `FRONTEND_URL=https://kadakour.alwaysdata.net` + vrai SMTP en remplacement d'Ethereal (config identifiée, pas encore appliquée)
+- [ ] Phase 5 — à préciser
+- [ ] Phase 6 — vérifications post-déploiement (salon/invitation/set-password/login manager/suspension/archivage)
+- [ ] Phase 7 — à préciser
+- [ ] Phase 8 — à préciser
 
-### [x] UI admin — Gestion des fermetures exceptionnelles (US22)
-- Ajouter un sélecteur de date dans le même onglet "Horaires"
-- Appeler `POST /api/availabilities/block` pour bloquer une date
-- Appeler `DELETE /api/availabilities/block/:date` pour débloquer
-- Afficher la liste des dates actuellement bloquées
-
-### [x] Profil client — modification des informations
-- Page `pages/profil.html` avec formulaire de modification (prénom, nom, email)
-- Endpoint `PUT /api/auth/me` côté backend
+### [ ] Vérifier qu'aucun mécanisme équivalent à `JEST_WORKER_ID` n'est actif en prod
+Le rate-limiting est désactivé en test via `process.env.JEST_WORKER_ID !== undefined`.
+Confirmer que `NODE_ENV` réel sur alwaysdata n'offre pas d'échappatoire similaire.
 
 ---
 
-## Priorité 2 — Améliorations optionnelles
+## Priorité 2 — Fonctionnalités livrées depuis la soutenance (pour référence)
 
-### [x] Illustration animée du salon
-- Animation SVG dans la section hero de `index.html`
-- Keyframes CSS pour les éléments du salon (flottement, scintillement, ciseaux)
+### [x] Multi-salons / multi-coiffeurs (backend + frontend)
+Tables `salons`/`stylists`, rôle `manager` scopé, parcours client en stepper,
+dashboard admin/manager adapté.
 
-### [x] Validation des entrées (backend)
-- Valider que `duration_minutes` est un entier positif dans `service.controller.js`
-- Valider que `price` est un nombre positif
-- Valider le format `YYYY-MM-DD` pour les dates dans les endpoints availabilities
+### [x] Administration des salons
+États (actif/suspendu/archivé), coordonnées, invitations manager par e-mail, page de
+définition de mot de passe, dashboard admin dédié.
 
-### [x] Vérification de l'expiration JWT côté frontend
-- Détecter les réponses 401 dans `apiRequest()` (app.js) et rediriger vers login
-- Actuellement, un token expiré laisse l'utilisateur sur la page avec un état cassé
+### [x] Carte Leaflet dans le parcours de réservation
+Multi-marqueurs à l'étape salon, mono-marqueur au récapitulatif.
 
-### [x] Déploiement en production
-- Hébergement sur alwaysdata (`https://kadakour.alwaysdata.net`)
-- Site Node.js configuré avec répertoire `/home/kadakour/backend`
-- Fichiers synchronisés via FTP, URL API corrigée
-- 44/44 tests passés en production (T39–T44)
+### [x] Anti-abus
+Rate-limiting (login/register/RDV) + limite de 5 rendez-vous actifs par client.
 
----
+### [x] Avis clients
+Dépôt, affichage public, note moyenne.
 
-## Priorité 3 — Évolutions futures
+### [x] Vérification e-mail + rappels automatiques
 
-### [ ] Plage de dates pour congés
-- Permettre à l'admin de bloquer une plage de dates (du/au) au lieu de bloquer jour par jour
-- Utile pour les vacances ou fermetures longues
+### [x] Tests automatisés Jest/Supertest
+182 tests, exécutés à chaque évolution.
 
 ---
 
-## Hors périmètre (ne pas implémenter)
+## Priorité 3 — Dette technique et backlog notés en route
+
+- [ ] Coordonnées de "Salon Élégance" (salon 1) à affiner — actuellement approximatives (proches de Roubaix, pas sur l'adresse réelle)
+- [ ] Atomicité de certains doubles UPDATE (ex. archivage + set-password)
+- [ ] Rôle admin lu depuis le JWT dans `authenticate` (pas rejoué en base, contrairement au manager via `resolveSalonScope`) — à harmoniser si un changement de rôle à effet immédiat devient nécessaire
+- [ ] Dette UTC résiduelle sur `getForDay` (`new Date(date).getDay()`)
+- [ ] Retrait des `DEFAULT 1` (migration 005) une fois le frontend historique définitivement abandonné
+- [ ] Endpoints admin-only pour gérer les coiffeurs (`stylists`) directement
+- [ ] `node_modules` présent dans l'historique Git (cosmétique)
+- [ ] `archived_by === 1` en dur dans un test (à généraliser)
+- [ ] README des migrations à tenir à jour (colonne prod)
+
+---
+
+## Priorité 4 — Évolutions futures
+
+- [ ] Plage de dates pour congés (bloquer une période plutôt que jour par jour)
+- [ ] Paiement en ligne
+- [ ] Notifications SMS (le rappel e-mail est déjà livré)
+- [ ] Application mobile native
+
+---
+
+## Hors périmètre (décision assumée)
 
 - Mentions légales / politique de confidentialité — non évalué par le jury DWWM
-- Tests automatisés Jest / Supertest — le plan de tests manuel T01–T27 suffit
-- Documentation Swagger/OpenAPI — non requise pour le titre professionnel
-- CORS restrictif / rate limiting — préoccupations de mise en production, hors scope
+- Documentation Swagger/OpenAPI
 - Pagination de la liste admin
-- Internationalisation des dates (Intl.DateTimeFormat)
-- Paiement en ligne (Stripe, etc.)
-- Notifications email/SMS de rappel
-- Multi-salon
-- Application mobile native
+- Internationalisation des dates (`Intl.DateTimeFormat`)

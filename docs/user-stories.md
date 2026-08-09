@@ -1,8 +1,8 @@
 # User Stories — Salon Élégance
 
-**Version :** 1.3  
-**Date :** 19 juin 2026  
-**Projet :** DWWM — Application de prise de rendez-vous
+**Version :** 2.0
+**Date :** 08 août 2026
+**Projet :** Application de prise de rendez-vous multi-salons (portfolio, ex-capstone DWWM RNCP 37674)
 
 ---
 
@@ -38,9 +38,22 @@
 | US20 | Désactiver une prestation | ✅ Implémenté |
 | US21 | Modifier les horaires d'ouverture | ✅ Implémenté |
 | US22 | Bloquer une date exceptionnelle | ✅ Implémenté |
-| US23 | Modifier son profil (prénom, nom, email) | ✅ Implémenté |
+| US23 | Modifier son profil | ✅ Implémenté |
+| US24 | Vérifier son e-mail à l'inscription | ✅ Implémenté |
+| US25 | Recevoir un rappel automatique par e-mail | ✅ Implémenté |
+| US26 | Laisser un avis après un rendez-vous honoré | ✅ Implémenté |
+| US27 | Consulter les avis et la note moyenne | ✅ Implémenté |
+| US28 | Choisir un salon | ✅ Implémenté |
+| US29 | Choisir un coiffeur au sein d'un salon | ✅ Implémenté |
+| US30 | Visualiser les salons sur une carte | ✅ Implémenté |
+| US31 | Administrer les salons (créer, modifier, suspendre, archiver, supprimer) | ✅ Implémenté |
+| US32 | Inviter un manager par e-mail | ✅ Implémenté |
+| US33 | Définir son mot de passe via une invitation | ✅ Implémenté |
+| US34 | Gérer un salon en tant que manager (accès scopé) | ✅ Implémenté |
+| US35 | Être protégé contre les abus (rate-limiting) | ✅ Implémenté |
+| US36 | Être limité en nombre de rendez-vous actifs simultanés | ✅ Implémenté |
 
-**Bilan :** 23 US complètes · 0 partielles
+**Bilan :** 36 US complètes · 0 partielles
 
 ---
 
@@ -50,292 +63,142 @@
 |------|-------------|
 | **Visiteur** | Utilisateur non connecté |
 | **Client** | Utilisateur connecté avec le rôle `client` |
-| **Admin** | Utilisateur connecté avec le rôle `admin` (le coiffeur / gérant) |
+| **Manager** | Utilisateur connecté avec le rôle `manager`, scopé à un salon unique (`users.salon_id`) |
+| **Admin** | Utilisateur connecté avec le rôle `admin`, accès à tous les salons |
 
 ---
 
 ## 1. Authentification
 
 ### US01 — Inscription ✅
-**En tant que** visiteur,  
-**je veux** créer un compte avec mon prénom, nom, email et mot de passe,  
-**afin de** pouvoir réserver des rendez-vous en ligne.
-
-**Critères d'acceptation :**
-- L'email doit avoir un format valide (regex côté serveur)
-- Le mot de passe doit faire au moins 8 caractères
-- Un email déjà utilisé retourne une erreur 409
-- À la création, un JWT est retourné et l'utilisateur est redirigé vers la page de réservation
-- Le rôle attribué par défaut est `client`
-
----
+**En tant que** visiteur, **je veux** créer un compte, **afin de** réserver en ligne.
+- Email valide (regex serveur), mot de passe ≥ 8 caractères, email dupliqué → 409, rôle par défaut `client`.
 
 ### US02 — Connexion ✅
-**En tant que** visiteur,  
-**je veux** me connecter avec mon email et mon mot de passe,  
-**afin d'** accéder à mon espace personnel.
-
-**Critères d'acceptation :**
-- Des identifiants incorrects retournent une erreur 401 sans préciser lequel est faux
-- Un JWT valide est stocké dans le `localStorage`
-- Un client est redirigé vers `mes-rdv.html`, un admin vers `dashboard.html`
-
----
+**En tant que** visiteur, **je veux** me connecter, **afin d'** accéder à mon espace.
+- Identifiants incorrects → 401 générique. JWT stocké côté client. Redirection selon le rôle (client / manager / admin).
 
 ### US03 — Déconnexion ✅
-**En tant que** client ou admin,  
-**je veux** me déconnecter depuis la navbar,  
-**afin de** sécuriser mon session sur un appareil partagé.
-
-**Critères d'acceptation :**
-- Le token est supprimé du `localStorage`
-- L'utilisateur est redirigé vers la page d'accueil
-
----
+Token supprimé du `localStorage`, redirection vers l'accueil.
 
 ### US04 — Protection des pages authentifiées ✅
-**En tant que** visiteur,  
-**je veux** être redirigé vers la page de connexion si j'essaie d'accéder à une page protégée,  
-**afin que** les données des clients soient sécurisées.
+Pages protégées redirigées vers `login.html` sans token valide ; `dashboard.html` réservé à `admin`/`manager`.
 
-**Critères d'acceptation :**
-- `reserver.html`, `mes-rdv.html` et `dashboard.html` redirigent vers `login.html` si aucun token valide n'est présent
-- `dashboard.html` redirige un client (rôle `client`) vers `login.html`
+### US24 — Vérifier son e-mail à l'inscription ✅
+**En tant que** client, **je veux** confirmer mon adresse e-mail après inscription, **afin de** garantir la fiabilité des rappels et communications.
+- `register` ne renvoie pas de JWT tant que le compte n'est pas vérifié.
+- `login` renvoie 403 si `email_verified = 0`.
+- Cooldown de 5 minutes sur le renvoi (`verification_sent_at`).
 
 ---
 
-## 2. Catalogue de prestations (visiteur / client)
+## 2. Salons et catalogue
 
 ### US05 — Consulter le catalogue ✅
-**En tant que** visiteur,  
-**je veux** voir la liste des prestations disponibles sur la page d'accueil,  
-**afin de** connaître les services proposés, leur durée et leur prix avant de m'inscrire.
+Prestations actives affichées, chargées depuis `GET /api/services`, scopées par salon.
 
-**Critères d'acceptation :**
-- Les prestations sont chargées dynamiquement depuis `GET /api/services`
-- Seules les prestations actives (`is_active = 1`) sont affichées
-- Chaque carte affiche : nom, durée (en minutes) et prix (en €)
+### US28 — Choisir un salon ✅
+**En tant que** client, **je veux** choisir le salon où je souhaite être reçu, **afin de** réserver au bon endroit.
+- Étape auto-masquée si un seul salon actif existe (auto-sélection).
+- Liste des salons actifs uniquement (les salons suspendus ou archivés sont exclus des parcours publics).
+
+### US29 — Choisir un coiffeur au sein d'un salon ✅
+**En tant que** client, **je veux** choisir mon coiffeur, **afin de** réserver avec la personne de mon choix.
+- Étape auto-masquée si un seul coiffeur actif dans le salon.
+- Les créneaux et disponibilités sont scopés par coiffeur (chevauchement autorisé entre coiffeurs différents).
+
+### US30 — Visualiser les salons sur une carte ✅
+**En tant que** client, **je veux** voir les salons sur une carte, **afin de** choisir le plus proche de chez moi.
+- Carte Leaflet multi-marqueurs à l'étape salon (clic = sélection), carte mono-marqueur non interactive au récapitulatif.
+- Coordonnées converties en nombre (`parseFloat`) avant tout usage, mysql2 renvoyant les `DECIMAL` en chaînes.
+- Un salon sans coordonnées reste réservable (la carte n'est pas bloquante).
+- La position GPS du client n'est jamais envoyée au serveur.
 
 ---
 
 ## 3. Réservation
 
-### US06 — Choisir une prestation ✅
-**En tant que** client,  
-**je veux** sélectionner une prestation dans un catalogue interactif,  
-**afin de** commencer mon parcours de réservation.
-
-**Critères d'acceptation :**
-- Les prestations sont affichées sous forme de cartes sélectionnables
-- Une seule prestation peut être sélectionnée à la fois
-- Le bouton "Continuer" est désactivé tant qu'aucune prestation n'est sélectionnée
-
----
-
-### US07 — Choisir une date ✅
-**En tant que** client,  
-**je veux** naviguer dans un calendrier et sélectionner une date disponible,  
-**afin de** voir les créneaux horaires de cette journée.
-
-**Critères d'acceptation :**
-- Les dates passées ne sont pas cliquables
-- Le calendrier permet de naviguer entre les mois
-- La date sélectionnée est mise en évidence
-
----
-
-### US08 — Choisir un créneau horaire ✅
-**En tant que** client,  
-**je veux** voir les créneaux disponibles pour la date choisie,  
-**afin de** sélectionner l'heure qui me convient.
-
-**Critères d'acceptation :**
-- Les créneaux sont calculés par pas de 30 minutes, dans la plage d'ouverture du salon
-- Les créneaux déjà pris (hors `cancelled`) ne sont pas proposés
-- Si le salon est fermé ce jour-là (jour non ouvré ou fermeture exceptionnelle), aucun créneau n'est affiché
-- Chaque créneau affiche l'heure de début et de fin
-
----
-
-### US09 — Confirmer la réservation ✅
-**En tant que** client,  
-**je veux** voir un récapitulatif de ma réservation avant de confirmer,  
-**afin de** valider ma prestation, ma date et mon heure.
-
-**Critères d'acceptation :**
-- Le récapitulatif affiche : prestation, durée, prix, date, heure de début et de fin
-- Si le créneau est pris entre-temps, une erreur 409 est affichée
-- En cas de succès, l'utilisateur est redirigé vers `mes-rdv.html`
+### US06-09 — Choisir une prestation / date / créneau / confirmer ✅
+Inchangées dans leur principe, désormais scopées par salon et par coiffeur. Le récapitulatif final affiche également le salon et le coiffeur choisis.
 
 ---
 
 ## 4. Gestion des rendez-vous (client)
 
-### US10 — Voir mes rendez-vous ✅
-**En tant que** client,  
-**je veux** consulter la liste de tous mes rendez-vous,  
-**afin de** suivre mes réservations passées et à venir.
+### US10-12 — Voir / filtrer / annuler mes rendez-vous ✅
+Inchangées ; chaque carte affiche désormais aussi le coiffeur et, indirectement, le salon.
 
-**Critères d'acceptation :**
-- Les RDV sont triés par date décroissante (le plus récent en haut)
-- Chaque carte affiche : prestation, prix, date, heure et statut
-- Les RDV sont chargés depuis `GET /api/appointments/me`
+### US36 — Être limité en nombre de rendez-vous actifs simultanés ✅
+**En tant qu'** exploitant, **je veux** limiter le nombre de rendez-vous actifs qu'un même client peut cumuler, **afin d'** empêcher la monopolisation des créneaux d'un salon.
+- Plafond global (tous salons confondus) : 5 rendez-vous actifs futurs par client.
+- Vérification en tout début de la création de RDV, avant les autres validations.
 
 ---
 
-### US11 — Filtrer mes rendez-vous ✅
-**En tant que** client,  
-**je veux** filtrer mes rendez-vous par statut (tous / à venir / annulés),  
-**afin de** retrouver rapidement ce que je cherche.
+## 5. Avis clients
 
-**Critères d'acceptation :**
-- Trois boutons de filtre : "Tous", "À venir" (statut `confirmed`), "Annulés" (statut `cancelled`)
-- Le filtre actif est mis en évidence
-- Le filtrage s'effectue côté client (sans requête supplémentaire)
+### US26 — Laisser un avis ✅
+**En tant que** client, **je veux** noter et commenter un rendez-vous honoré, **afin de** partager mon expérience.
+- Éligibilité vérifiée en SQL (RDV du client, statut `confirmed`, terminé).
+- Un seul avis par rendez-vous (contrainte UNIQUE, 409 si doublon).
 
----
-
-### US12 — Annuler un rendez-vous ✅
-**En tant que** client,  
-**je veux** annuler un de mes rendez-vous à venir,  
-**afin de** libérer le créneau si je ne peux pas me présenter.
-
-**Critères d'acceptation :**
-- Une modal de confirmation est affichée avant l'annulation
-- Seul le propriétaire du RDV peut l'annuler (vérification `user_id` côté serveur)
-- Le statut passe à `cancelled` et le créneau est immédiatement libéré
-- Le bouton "Annuler" n'est pas affiché pour les RDV déjà annulés
+### US27 — Consulter les avis et la note moyenne ✅
+**En tant que** visiteur, **je veux** voir les avis des clients et la note moyenne, **afin d'** évaluer la qualité du salon avant réservation.
+- Affichage public avec prénom uniquement (minimisation RGPD).
+- Badge masqué si aucun avis.
 
 ---
 
-## 5. Dashboard administrateur
+## 6. Dashboard administrateur / manager
 
-### US13 — Voir les métriques du jour ✅
-**En tant qu'** admin,  
-**je veux** voir en un coup d'œil les chiffres clés du salon,  
-**afin de** piloter mon activité quotidiennement.
+### US13-20 — Métriques, agenda, RDV, prestations ✅
+Inchangées dans leur principe. Un **manager** ne voit que les données de son salon (`resolveSalonScope`, relu en base à chaque requête, jamais depuis le JWT).
 
-**Critères d'acceptation :**
-- 4 métriques affichées : RDV aujourd'hui, RDV cette semaine, prestations actives, annulations totales
-- Les métriques sont calculées dynamiquement depuis l'API
-
----
-
-### US14 — Gérer l'agenda journalier ✅
-**En tant qu'** admin,  
-**je veux** visualiser les rendez-vous du jour sous forme de liste chronologique,  
-**afin de** organiser ma journée de travail.
-
-**Critères d'acceptation :**
-- L'agenda affiche les RDV du jour en cours par défaut
-- Chaque entrée affiche : heure de début et de fin, prestation, nom et prénom du client
-- La navigation ‹ / › permet de passer au jour précédent ou suivant
-- Un bouton "Aujourd'hui" revient à la date du jour
+### US34 — Gérer un salon en tant que manager ✅
+**En tant que** manager, **je veux** avoir un accès complet à mon salon uniquement, **afin de** piloter mon activité sans voir les données des autres salons.
+- Toute création est forcée sur le salon du manager.
+- Tout accès à une ressource hors de son salon renvoie 403.
 
 ---
 
-### US15 — Voir tous les rendez-vous ✅
-**En tant qu'** admin,  
-**je veux** consulter l'ensemble des rendez-vous avec un filtre par date,  
-**afin de** trouver un RDV spécifique ou suivre l'activité sur une période.
+## 7. Horaires
 
-**Critères d'acceptation :**
-- Sans filtre, tous les RDV sont affichés (triés chronologiquement)
-- Le filtre par date restreint les résultats à la date sélectionnée
-- Chaque ligne affiche : date/heure, prestation, nom du client, email et statut
+### US21-22 — Horaires d'ouverture et fermetures exceptionnelles ✅
+Inchangées, désormais scopées par coiffeur (sélecteur de coiffeur dans l'onglet Horaires si plusieurs coiffeurs).
 
 ---
 
-### US16 — Annuler un rendez-vous (admin) ✅
-**En tant qu'** admin,  
-**je veux** annuler n'importe quel rendez-vous,  
-**afin de** gérer les imprévus (fermeture, absence) sans intervention du client.
+## 8. Administration des salons (admin)
 
-**Critères d'acceptation :**
-- L'admin peut annuler tout RDV quel que soit son propriétaire
-- L'annulation est irréversible (statut `cancelled`)
+### US31 — Administrer les salons ✅
+**En tant qu'** admin, **je veux** créer, modifier, suspendre, réactiver, archiver ou supprimer un salon, **afin de** piloter le réseau de salons.
+- Trois états : Actif / Suspendu (réversible) / Archivé (terminal).
+- Suspension avec rendez-vous futurs → 409 avec compte, confirmation `force: true` requise.
+- Archivage = défense en profondeur (`is_active` forcé à 0), invalide les invitations manager non consommées du salon.
+- Suppression réservée aux salons vierges (aucune dépendance) ; sinon 409 avec suggestion d'archivage.
+- Coordonnées (latitude/longitude) saisissables, les deux ou aucune (400 sinon).
 
----
+### US32 — Inviter un manager par e-mail ✅
+**En tant qu'** admin, **je veux** inviter un gérant par e-mail pour un salon donné, **afin de** lui donner accès à son espace de gestion.
+- Jeton à usage unique (table `action_tokens`, hashé SHA-256), envoyé par e-mail (Nodemailer/Ethereal en dev).
 
-### US17 — Voir la liste des prestations (admin) ✅
-**En tant qu'** admin,  
-**je veux** voir toutes les prestations dans un tableau de bord,  
-**afin de** les gérer facilement.
-
-**Critères d'acceptation :**
-- Le tableau affiche : nom, durée, prix et statut (actif / désactivé)
-- Les prestations désactivées sont visibles dans le dashboard (contrairement au catalogue client)
+### US33 — Définir son mot de passe via une invitation ✅
+**En tant que** manager invité, **je veux** définir mon mot de passe via le lien reçu, **afin d'** activer mon compte.
+- Page dédiée lisant le jeton en query string, formulaire mot de passe + confirmation.
 
 ---
 
-### US18 — Ajouter une prestation ✅
-**En tant qu'** admin,  
-**je veux** créer une nouvelle prestation via un formulaire modal,  
-**afin d'** enrichir le catalogue proposé aux clients.
-
-**Critères d'acceptation :**
-- Champs requis : nom, durée (en minutes, multiple de 15), prix (en €)
-- La prestation est immédiatement visible dans le catalogue client
-
----
-
-### US19 — Modifier une prestation ✅
-**En tant qu'** admin,  
-**je veux** modifier le nom, la durée ou le prix d'une prestation existante,  
-**afin de** maintenir le catalogue à jour.
-
-**Critères d'acceptation :**
-- Un formulaire modal pré-rempli avec les valeurs actuelles
-- La modification est répercutée immédiatement
-
----
-
-### US20 — Désactiver une prestation ✅
-**En tant qu'** admin,  
-**je veux** désactiver une prestation sans la supprimer,  
-**afin de** préserver l'historique des rendez-vous associés.
-
-**Critères d'acceptation :**
-- La prestation disparaît du catalogue client (`is_active = 0`)
-- L'historique des RDV passés liés à cette prestation est conservé
-- La prestation reste visible dans le dashboard admin
-
----
-
-## 6. Gestion des horaires (admin)
-
-### US21 — Modifier les horaires d'ouverture ✅
-**En tant qu'** admin,  
-**je veux** modifier les horaires d'ouverture de chaque jour de la semaine,  
-**afin que** les créneaux proposés aux clients reflètent les heures réelles du salon.
-
-**Critères d'acceptation :**
-- L'admin peut définir une heure d'ouverture et de fermeture pour chaque jour (0–6)
-- Un jour sans horaire configuré est considéré comme fermé
-- Les créneaux existants sont recalculés à la prochaine consultation
-
----
-
-### US22 — Bloquer une date exceptionnelle ✅
-**En tant qu'** admin,  
-**je veux** bloquer une date précise (congés, fermeture exceptionnelle),  
-**afin qu'** aucun créneau ne soit proposé ce jour-là.
-
-**Critères d'acceptation :**
-- La date bloquée prend le dessus sur l'horaire hebdomadaire normal
-- L'admin peut débloquer la date ultérieurement
-
----
-
-## 7. Profil client
+## 9. Profil client
 
 ### US23 — Modifier son profil ✅
-**En tant que** client,  
-**je veux** modifier mon prénom, mon nom et mon adresse e-mail,  
-**afin de** maintenir mes informations personnelles à jour.
+Inchangée.
 
-**Critères d'acceptation :**
-- Le formulaire est pré-rempli avec les données actuelles (chargées via `GET /api/auth/me`)
-- Un email déjà utilisé par un autre compte retourne une erreur 409
-- Un message de confirmation est affiché après l'enregistrement
+---
 
+## 10. Anti-abus
+
+### US35 — Être protégé contre les abus ✅
+**En tant qu'** exploitant, **je veux** limiter le nombre de requêtes sur les routes sensibles, **afin de** me protéger contre les attaques par force brute ou la saturation du système de réservation.
+- `authLimiter` : 10 requêtes / 15 min sur login, register, resend-verification.
+- `appointmentLimiter` : 20 requêtes / 15 min sur la création de RDV.
+- `trust proxy` activé (obligatoire derrière le proxy alwaysdata pour un comptage IP correct).

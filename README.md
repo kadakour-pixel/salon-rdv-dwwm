@@ -1,35 +1,48 @@
-# 💇 Salon Élégance — Application de prise de rendez-vous
+# 💇 Salon Élégance — Application de prise de rendez-vous multi-salons
 
-> Projet de fin de formation **DWWM (Développeur Web et Web Mobile)**  
-> Application web full-stack de réservation en ligne pour un salon de coiffure.
+> Projet initialement réalisé dans le cadre du titre **DWWM (RNCP 37674)**, titre obtenu
+> (soutenance réussie le 29/07/2026). Poursuivi depuis comme **projet de portfolio**.
+> Application web full-stack de réservation en ligne pour un réseau de salons de coiffure.
 
 ---
 
 ## 📋 Présentation
 
-Salon Élégance permet aux clients de réserver un rendez-vous en ligne 24h/24, sans appel téléphonique. Le coiffeur dispose d'un dashboard administrateur pour gérer son agenda, ses prestations et ses disponibilités en temps réel.
+Salon Élégance permet aux clients de réserver un rendez-vous en ligne 24h/24, sans appel
+téléphonique, dans le salon et avec le coiffeur de leur choix parmi un réseau de salons.
+Chaque gérant de salon (manager) dispose d'un dashboard scopé à son propre salon ; un
+administrateur pilote l'ensemble du réseau.
 
 ### Fonctionnalités principales
 
 **Côté client**
-- Inscription et connexion sécurisées
-- Catalogue des prestations (nom, durée, prix)
-- Réservation en 3 étapes : prestation → créneau → confirmation
-- Consultation et annulation des rendez-vous depuis l'espace client
+- Inscription avec vérification d'e-mail, connexion sécurisée
+- Choix du salon (avec carte interactive Leaflet) et du coiffeur
+- Catalogue des prestations scopé au salon choisi
+- Réservation en plusieurs étapes : salon → coiffeur → prestation → date → créneau
+- Consultation, filtrage et annulation des rendez-vous
+- Dépôt d'un avis après un rendez-vous honoré
 - Modification du profil (prénom, nom, email)
+- Rappels automatiques par e-mail avant le rendez-vous
+
+**Côté manager (gérant d'un salon)**
+- Agenda du jour navigable, scopé à son salon
+- Gestion des prestations et des horaires de son salon
+- Vue des rendez-vous de son salon uniquement
 
 **Côté administrateur**
-- Agenda du jour navigable (vue par date)
-- Gestion complète des prestations (CRUD)
-- Gestion des horaires d'ouverture et fermetures exceptionnelles
-- Vue globale de tous les rendez-vous avec filtre par date
-- Métriques en temps réel (RDV du jour, de la semaine, annulations)
+- Toutes les capacités manager, sur tous les salons
+- Administration des salons : création, modification, suspension, réactivation,
+  archivage, suppression (salons vierges uniquement)
+- Invitation de managers par e-mail (jeton à usage unique)
+- Métriques en temps réel
 
 ### Rôles utilisateurs
 
-- **Client** — réserve et gère ses propres rendez-vous.
-- **Manager** — gère un salon précis (`salon_id` porté par son compte) : agenda, prestations et horaires scopés à ce seul salon.
-- **Admin** — gère l'application dans son ensemble, tous salons confondus, sans `salon_id` propre.
+- **Client** — réserve et gère ses propres rendez-vous, laisse des avis.
+- **Manager** — gère un salon précis (`salon_id` porté par son compte, relu en base à
+  chaque requête). Accès strictement limité à son salon.
+- **Admin** — gère l'application dans son ensemble, tous salons confondus.
 
 ---
 
@@ -37,64 +50,77 @@ Salon Élégance permet aux clients de réserver un rendez-vous en ligne 24h/24,
 
 | Couche | Technologie |
 |--------|-------------|
-| Frontend | HTML / CSS / JavaScript vanilla |
-| Backend | Node.js + Express |
-| Base de données | MySQL |
-| Authentification | JWT (JSON Web Tokens) |
+| Frontend | HTML / CSS / JavaScript vanilla, mobile-first |
+| Cartographie | Leaflet 1.9.4 (CDN unpkg) |
+| Backend | Node.js + Express, architecture en couches |
+| Base de données | MariaDB via `mysql2` (pool, requêtes paramétrées) |
+| Authentification | JWT (JSON Web Tokens) + rôles |
 | Hashage des mots de passe | bcrypt |
+| E-mails | Nodemailer (Ethereal en dev) |
+| Sécurité HTTP | Helmet, CORS (liste blanche) |
+| Anti-abus | express-rate-limit |
+| Tests | Jest + Supertest (182 tests) |
 
 ---
 
 ## 📁 Structure du projet
 
 ```
-salon-rdv/
+salon-rdv-dwwm/
 ├── backend/
-│   ├── server.js                        # Point d'entrée Express
+│   ├── server.js                            # Point d'entrée Express
 │   ├── package.json
-│   ├── .env.example                     # Variables d'environnement
+│   ├── .env.example
 │   ├── database/
-│   │   └── schema.sql                   # Schéma BDD + données de seed
+│   │   └── schema.sql                       # Schéma BDD à jour
+│   ├── migrations/                          # Migrations incrémentales 001 → 007
+│   ├── tests/
+│   │   ├── schema_test.sql
+│   │   ├── setup.js
+│   │   ├── unit/
+│   │   └── integration/
+│   ├── scripts/
+│   │   └── send-reminders.js                # Rappels automatiques (cron)
 │   └── src/
 │       ├── config/
-│       │   └── db.js                    # Pool de connexions MySQL
+│       │   └── db.js                        # Pool de connexions MariaDB
 │       ├── middlewares/
-│       │   └── auth.middleware.js       # JWT + contrôle des rôles
+│       │   ├── auth.middleware.js           # JWT + contrôle des rôles
+│       │   └── rate-limit.middleware.js     # authLimiter, appointmentLimiter
 │       ├── controllers/
-│       │   ├── auth.controller.js       # Inscription / connexion / profil
-│       │   ├── service.controller.js    # CRUD prestations
-│       │   ├── appointment.controller.js # Créneaux + RDV
-│       │   └── availability.controller.js # Horaires
+│       │   ├── auth.controller.js           # Inscription/connexion/profil/invitations
+│       │   ├── salon.controller.js          # CRUD salons, états
+│       │   ├── service.controller.js        # CRUD prestations (scopé salon)
+│       │   ├── appointment.controller.js    # Créneaux + RDV (scopé salon/coiffeur)
+│       │   ├── availability.controller.js   # Horaires (scopé coiffeur)
+│       │   └── review.controller.js         # Avis clients
+│       ├── utils/
+│       │   └── mailer.js                    # Templates e-mail (escapeHtml)
 │       └── routes/
 │           ├── auth.routes.js
+│           ├── salon.routes.js
 │           ├── service.routes.js
 │           ├── appointment.routes.js
-│           └── availability.routes.js
+│           ├── availability.routes.js
+│           └── review.routes.js
 │
 └── frontend/
-    ├── index.html                       # Page d'accueil
+    ├── index.html                           # Accueil (catalogue, avis)
     ├── css/
-    │   ├── style.css                    # Styles globaux + variables CSS
-    │   ├── home.css                     # Styles page d'accueil
-    │   ├── pages.css                    # Styles communs pages internes
-    │   ├── login.css                    # Styles page connexion
-    │   ├── reserver.css                 # Styles page réservation
-    │   ├── mes-rdv.css                  # Styles espace client
-    │   └── dashboard.css               # Styles dashboard admin
     ├── js/
-    │   ├── app.js                       # Utilitaires partagés (Auth, apiRequest, toast)
-    │   ├── home.js                      # Logique page d'accueil
-    │   ├── login.js                     # Logique connexion / inscription
-    │   ├── reserver.js                  # Logique réservation (stepper + calendrier)
-    │   ├── mes-rdv.js                   # Logique espace client
-    │   ├── profil.js                    # Logique page profil client
-    │   └── dashboard.js                # Logique dashboard admin
+    │   ├── app.js                           # Auth, apiRequest, toast, API_BASE dynamique
+    │   ├── reserver.js                      # Stepper salon → coiffeur → service → créneau
+    │   ├── mes-rdv.js
+    │   ├── profil.js
+    │   ├── dashboard.js                     # Dashboard admin/manager + gestion salons
+    │   └── definir-mot-de-passe.js
     └── pages/
-        ├── login.html                   # Connexion / inscription
-        ├── reserver.html               # Réservation en 3 étapes
-        ├── mes-rdv.html                # Mes rendez-vous
-        ├── profil.html                 # Profil client
-        └── dashboard.html              # Dashboard administrateur
+        ├── login.html
+        ├── definir-mot-de-passe.html        # Activation de compte manager (invitation)
+        ├── reserver.html
+        ├── mes-rdv.html
+        ├── profil.html
+        └── dashboard.html
 ```
 
 ---
@@ -104,118 +130,129 @@ salon-rdv/
 ### Prérequis
 
 - [Node.js](https://nodejs.org) v18+
-- [MySQL](https://www.mysql.com) 8+
+- [MariaDB](https://mariadb.org) 10.6+ (développé et testé sur 11.4)
 - Un terminal
 
 ### 1. Cloner le projet
 
 ```bash
-git clone <url-du-repo>
-cd salon-rdv
+git clone https://github.com/kadakour-pixel/salon-rdv-dwwm.git
+cd salon-rdv-dwwm
+git checkout evolution-v2
 ```
 
 ### 2. Configurer et démarrer le backend
 
 ```bash
 cd backend
-
-# Installer les dépendances
 npm install
-
-# Créer le fichier de configuration
 cp .env.example .env
 ```
 
-Éditer le fichier `.env` :
-
-```env
-PORT=3000
-
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=votre_mot_de_passe
-DB_NAME=salon_rdv
-
-JWT_SECRET=remplacer_par_une_chaine_longue_et_aleatoire
-JWT_EXPIRES_IN=7d
-```
+Éditer le fichier `.env` (voir `.env.example` pour la liste complète des variables,
+notamment `APP_URL`, `FRONTEND_URL`, les identifiants SMTP, `JWT_SECRET`).
 
 ```bash
-# Créer la base de données et insérer les données de test
+# Créer la base de données et appliquer le schéma + les migrations 001 → 007
 mysql -u root -p < database/schema.sql
 
 # Démarrer le serveur (mode développement)
 npm run dev
 ```
 
-Le backend est accessible sur `http://localhost:3000`
+Le backend est accessible sur `http://localhost:3000`.
 
 ### 3. Démarrer le frontend
 
-Le frontend est en HTML/CSS/JS vanilla — aucune installation nécessaire.
-
 ```bash
 cd frontend
-
-# Option A : avec Node.js
-npx serve .
-
-# Option B : avec Python
-python3 -m http.server 8080
+# Live Server (VS Code) recommandé, une seule origine, ex. 127.0.0.1:5500
 ```
 
-Ouvrir `http://localhost:8080` dans le navigateur.
+> ⚠️ Ne pas ouvrir les fichiers HTML directement avec `file://` — les appels API seront
+> bloqués par les restrictions CORS.
 
-> ⚠️ Ne pas ouvrir les fichiers HTML directement avec `file://` — les appels API seront bloqués par les restrictions CORS du navigateur.
+### 4. Lancer les tests
+
+```bash
+cd backend
+npx jest --runInBand --forceExit
+```
+
+`--forceExit` est requis (pools `mysql2`). Base de test dédiée `salon_rdv_test` via
+`backend/.env.test`, chargée par `tests/setup.js`.
 
 ---
 
 ## 🔌 API REST
 
-Base URL : `http://localhost:3000/api`
+Base URL : `http://localhost:3000/api` (dev) ou `https://kadakour.alwaysdata.net/api` (prod).
 
 ### Authentification
 
 | Méthode | Route | Accès | Description |
 |---------|-------|-------|-------------|
 | POST | `/auth/register` | Public | Créer un compte client |
-| POST | `/auth/login` | Public | Connexion → retourne un JWT |
-| GET | `/auth/me` | Client | Récupérer son profil |
-| PUT | `/auth/me` | Client | Modifier son profil |
+| POST | `/auth/login` | Public | Connexion → JWT (403 si e-mail non vérifié) |
+| GET | `/auth/verify` | Public | Vérification d'e-mail |
+| POST | `/auth/resend-verification` | Public | Renvoyer le lien (cooldown 5 min) |
+| GET / PUT | `/auth/me` | Client | Profil |
+| POST | `/auth/invite-manager` | Admin | Inviter un manager pour un salon |
+| POST | `/auth/set-password` | Public (jeton) | Activer un compte manager invité |
+
+### Salons
+
+| Méthode | Route | Accès | Description |
+|---------|-------|-------|-------------|
+| GET | `/salons` | Public | Salons actifs |
+| GET | `/salons/:id` | Public | Détail d'un salon |
+| GET | `/salons/:id/stylists` | Public | Coiffeurs d'un salon |
+| GET | `/salons/admin` | Admin | Tous les salons + `can_delete` |
+| POST / PUT | `/salons` / `/salons/:id` | Admin | Créer/modifier un salon |
+| POST | `/salons/:id/status` | Admin | Suspendre/réactiver (`force` si RDV futurs) |
+| POST | `/salons/:id/archive` | Admin | Archiver (terminal) |
+| DELETE | `/salons/:id` | Admin | Supprimer (salon vierge uniquement) |
 
 ### Prestations
 
 | Méthode | Route | Accès | Description |
 |---------|-------|-------|-------------|
-| GET | `/services` | Public | Liste des prestations actives |
-| POST | `/services` | Admin | Créer une prestation |
-| PUT | `/services/:id` | Admin | Modifier une prestation |
-| DELETE | `/services/:id` | Admin | Désactiver une prestation |
+| GET | `/services` | Public | Prestations actives, scopées par salon |
+| POST | `/services` | Admin / Manager | Créer une prestation |
+| PUT | `/services/:id` | Admin / Manager | Modifier (salon immuable) |
+| DELETE | `/services/:id` | Admin / Manager | Désactiver |
 
 ### Rendez-vous
 
 | Méthode | Route | Accès | Description |
 |---------|-------|-------|-------------|
-| GET | `/appointments/slots?date=&serviceId=` | Client | Créneaux disponibles |
-| POST | `/appointments` | Client | Réserver un créneau |
+| GET | `/appointments/slots?date=&serviceId=` | Authentifié | Créneaux disponibles |
+| POST | `/appointments` | Client (rate-limité, max 5 actifs) | Réserver un créneau |
 | GET | `/appointments/me` | Client | Mes rendez-vous |
-| GET | `/appointments?date=` | Admin | Tous les rendez-vous |
-| DELETE | `/appointments/:id` | Client/Admin | Annuler un rendez-vous |
+| GET | `/appointments?date=` | Admin / Manager | RDV (scopés par salon si manager) |
+| DELETE | `/appointments/:id` | Client (le sien) / Admin / Manager | Annuler |
 
 ### Disponibilités
 
 | Méthode | Route | Accès | Description |
 |---------|-------|-------|-------------|
-| GET | `/availabilities` | Public | Horaires d'ouverture |
+| GET | `/availabilities` | Public | Horaires, scopés par coiffeur |
 | GET | `/availabilities/day?date=` | Public | Horaires d'un jour précis |
-| PUT | `/availabilities/:dayOfWeek` | Admin | Modifier les horaires d'un jour |
-| POST | `/availabilities/block` | Admin | Bloquer une date |
-| DELETE | `/availabilities/block/:date` | Admin | Débloquer une date |
+| PUT | `/availabilities/:dayOfWeek` | Admin / Manager | Modifier les horaires |
+| POST | `/availabilities/block` | Admin / Manager | Bloquer une date |
+| DELETE | `/availabilities/block/:date` | Admin / Manager | Débloquer une date |
+
+### Avis
+
+| Méthode | Route | Accès | Description |
+|---------|-------|-------|-------------|
+| POST | `/reviews` | Client | Déposer un avis (RDV honoré uniquement) |
+| GET | `/reviews` | Public | Avis (prénom seul, RGPD) |
+| GET | `/reviews/reviewable` | Client | RDV éligibles sans avis |
+| GET | `/reviews/stats` | Public | Note moyenne + nombre d'avis |
 
 ### Format du token JWT
 
-Toutes les routes protégées nécessitent le header :
 ```
 Authorization: Bearer <token>
 ```
@@ -224,42 +261,32 @@ Authorization: Bearer <token>
 
 ## 🗄 Base de données
 
-### Schéma
+8 tables : `users`, `salons`, `stylists`, `services`, `availabilities`, `appointments`,
+`reviews`, `action_tokens`. Migrations incrémentales 001 → 007 dans `backend/migrations/`,
+détail dans le README de ce dossier.
 
-```
-users
-  id | email | password_hash | first_name | last_name | role | created_at
-
-services
-  id | name | duration_minutes | price | is_active
-
-availabilities
-  id | day_of_week | open_time | close_time | is_blocked | blocked_date
-
-appointments
-  id | user_id (FK) | service_id (FK) | start_at | end_at | status | created_at
-```
-
-### Compte admin par défaut
-
-Après l'exécution du `schema.sql`, un compte admin est créé :
+### Compte admin par défaut (dev)
 
 ```
 Email    : admin@salon.fr
-Password : Admin1234!   ← À changer impérativement en production
+Password : AdminDev123   ← à changer impérativement en production
 ```
-
-> Le hash bcrypt du mot de passe dans le seed est un placeholder — remplacer la ligne dans `schema.sql` par un vrai hash généré avec bcrypt avant la mise en production.
 
 ---
 
 ## 🔒 Sécurité
 
-- Les mots de passe sont hashés avec **bcrypt** (coût 10)
-- L'authentification repose sur des **JWT** signés, expirés après 7 jours
-- Le middleware vérifie le rôle (`client`, `manager` ou `admin`) sur chaque route protégée
-- Les prestations supprimées sont **désactivées logiquement** (`is_active = 0`) pour préserver l'historique des RDV
-- La détection des conflits de créneaux est effectuée côté serveur avant chaque réservation
+- Mots de passe hashés avec **bcrypt**
+- Authentification **JWT** signés, contrôle de rôle (`client`, `manager`, `admin`)
+- Vérification d'e-mail obligatoire à l'inscription
+- **Rate-limiting** (`express-rate-limit`) sur les routes sensibles (login, register,
+  resend-verification, création de RDV)
+- **Plafond de rendez-vous actifs** par client (5, tous salons confondus)
+- Prestations supprimées **désactivées logiquement** (`is_active = 0`)
+- Salons : suppression réservée aux salons vierges, archivage = défense en profondeur
+- Détection des conflits de créneaux côté serveur, scopée par coiffeur
+- Requêtes SQL systématiquement paramétrées (protection injection)
+- **Helmet** (en-têtes HTTP) + **CORS** en liste blanche d'origines
 
 ---
 
@@ -269,12 +296,24 @@ Password : Admin1234!   ← À changer impérativement en production
 |----------|---------------|
 | JS vanilla (sans framework) | Maîtrise des fondamentaux, pas de dépendance de build |
 | Suppression logique des prestations | Préserve l'intégrité des données historiques |
-| Créneaux générés à la volée | Pas de stockage redondant, toujours à jour |
-| Pas de 30 min configurable | Le pas de génération est modifiable dans `appointment.controller.js` |
+| Créneaux générés à la volée, scopés par coiffeur | Pas de stockage redondant, chevauchement autorisé entre coiffeurs différents |
+| Rôle manager relu en base à chaque requête | Un changement d'affectation de salon est immédiat, pas besoin de reconnexion |
+| Suspension réversible / archivage terminal | Distingue une fermeture temporaire d'une fermeture définitive |
 | JWT stateless | Pas de session côté serveur, adapté à une future API mobile |
+
+---
+
+## 🚧 État du déploiement
+
+Le code de ce dépôt (branche `evolution-v2`) contient toutes les évolutions
+post-soutenance. **La production sur alwaysdata n'est pas encore à jour** : elle tourne
+encore sur la version pré-évolutions (4 tables, sans multi-salons, sans anti-abus). Le
+déploiement des évolutions est en cours (migrations, configuration SMTP/URL de
+production, vérifications post-déploiement).
 
 ---
 
 ## 📄 Licence
 
-Projet réalisé dans le cadre de la certification **DWWM** — usage pédagogique.
+Projet initialement réalisé dans le cadre de la certification **DWWM (RNCP 37674)**,
+poursuivi comme projet de portfolio — usage pédagogique et démonstratif.

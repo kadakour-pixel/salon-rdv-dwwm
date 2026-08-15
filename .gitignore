@@ -1,9 +1,7 @@
 node_modules/
-.env
-.env.test
+.env*
 .claude/
 # Livrables d'examen (ne pas versionner)
 *.docx
 *.pptx
 *.pdf
-.env.backup

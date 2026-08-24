@@ -11,6 +11,11 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Adresse d'expédition affichée au destinataire — distincte de SMTP_USER
+// (identifiant d'authentification Brevo), doit être sur le domaine authentifié
+// salon-elegance.fr pour respecter l'alignement SPF/DKIM/DMARC.
+const FROM_ADDRESS = process.env.SMTP_FROM || 'Salon Élégance <noreply@salon-elegance.fr>';
+
 // Échappe les caractères spéciaux HTML pour éviter l'injection de balises
 // dans les templates de mail (pendant côté mail du fix XSS DOM en 2e6eff5).
 function escapeHtml(str) {
@@ -27,7 +32,7 @@ async function sendVerificationEmail(to, token) {
   const link = `${process.env.APP_URL}/api/auth/verify?token=${token}`;
   const safeLink = escapeHtml(link);
   await transporter.sendMail({
-    from:    process.env.SMTP_USER,
+    from:    FROM_ADDRESS,
     to,
     subject: 'Confirmez votre adresse email — Salon Élégance',
     html: `
@@ -44,7 +49,7 @@ async function sendInvitationEmail(to, token, firstName, salonName) {
   const link = `${process.env.FRONTEND_URL}/pages/definir-mot-de-passe.html?token=${token}`;
   const safeLink = escapeHtml(link);
   await transporter.sendMail({
-    from:    process.env.SMTP_USER,
+    from:    FROM_ADDRESS,
     to,
     subject: 'Invitation à gérer votre salon — Salon Élégance',
     html: `
@@ -60,7 +65,7 @@ async function sendInvitationEmail(to, token, firstName, salonName) {
 // Envoie le mail de rappel 24h avant un RDV confirmé
 async function sendReminderEmail(to, { firstName, serviceName, startAtFr }) {
   await transporter.sendMail({
-    from:    process.env.SMTP_USER,
+    from:    FROM_ADDRESS,
     to,
     subject: 'Rappel de votre rendez-vous — Salon Élégance',
     html: `

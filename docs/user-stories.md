@@ -1,8 +1,13 @@
 # User Stories — Salon Élégance
 
 **Version :** 2.0
-**Date :** 08 août 2026
+**Date :** 08 août 2026 (fonctionnalités) — déploiement en production confirmé le 29 août 2026
 **Projet :** Application de prise de rendez-vous multi-salons (portfolio, ex-capstone DWWM RNCP 37674)
+
+> Les 36 user stories ci-dessous sont implémentées et testées en développement depuis
+> le 8 août 2026. Elles sont désormais également **vérifiées en production** sur
+> `https://kadakour.alwaysdata.net` (voir `README.md` § État du déploiement et
+> `journal-de-bord.md` pour le détail des sessions de déploiement).
 
 ---
 

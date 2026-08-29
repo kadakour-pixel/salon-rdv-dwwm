@@ -129,7 +129,8 @@ préexistant (`.btn:disabled`) corrigé séparément.
 - **Lot B** : sélecteur de coiffeur pour l'onglet Horaires (masqué si un seul
   coiffeur). Fix UTC séparé sur `blocked_date`.
 - **Lot C** : services scopés par salon côté dashboard.
-- **Lot D** : vue des rendez-vous enrichie (salon/coiffeur affichés).
+- **Lot D** : vue des rendez-vous enrichie (salon/coiffeur affichés), libellé
+  sidebar « Mon salon » (manager) / « Administration » (admin).
 
 ---
 
@@ -171,8 +172,9 @@ avant actions irréversibles. 179 tests, aucune régression backend.
 
 **Changement méthodologique** : l'outil Codex (ChatGPT) a été testé puis abandonné
 après avoir affirmé avoir vérifié des fichiers/routes sans l'avoir fait réellement.
-Méthode adoptée depuis : le code est écrit et expliqué directement en conversation,
-après vérification croisée stricte sur le contenu réel des fichiers.
+Méthode adoptée depuis : le code est écrit et expliqué directement en conversation
+(commande Claude, forfait Free, pas d'accès à Claude Code), après vérification
+croisée stricte sur le contenu réel des fichiers.
 
 ## Entrée 19 — Carte Leaflet dans le parcours de réservation (E2)
 **Date :** 08 août 2026
@@ -198,9 +200,159 @@ créneaux d'un salon, motivé par la mise en production prochaine :
 
 **182/182 tests verts. Branche `evolution-v2`, HEAD `fd6340f`, poussée sur origin.**
 
+Fusion `main` ← `evolution-v2` en fast-forward pur le 13/08 (voir Entrée 23) ; les
+deux branches restent synchronisées à chaque déploiement notable depuis lors.
+
+---
+
+## Entrée 21 — Déploiement alwaysdata, Phase 0 (pré-vol) et incident FTP
+**Date :** 12 août 2026
+
+Reconstitution du plan de déploiement en 8 phases (0 à 7), le détail de plusieurs
+phases ayant été perdu entre deux sessions. **Phase 0 terminée** : constat que la
+prod tournait encore sur la version pré-évolutions (4 tables, aucune migration
+jouée, structure backend ancienne). FTP/FTPS validé comme méthode de déploiement de
+fichiers. SSH par mot de passe non fonctionnel à cette date (résolu plus tard).
+
+**Incident** : une mauvaise manipulation FTP a écrasé le `.env` de production.
+Fichier reconstruit en local (14 variables), envoyé et activé via renommage en deux
+temps sur le serveur (`.env.corrompu-12-08` conservé comme trace). Service redémarré
+et vérifié fonctionnel (`/api/health`, `/api/services` OK avec données réelles).
+
+## Entrée 22 — Résolution incident FTP, Phase 2 (merge/push Git)
+**Date :** 13 août 2026
+
+Fausse alerte élucidée : le `server.js` en prod était resté la version
+pré-certification (normal, l'incident FTP a été interrompu avant d'atteindre ces
+fichiers alphabétiquement). `.gitignore` durci (`.env*`), fichiers sensibles sortis
+du dépôt par précaution. **Phase 2 terminée** : `main` fusionnée avec `evolution-v2`
+en fast-forward pur (56 commits, 69 fichiers, aucun conflit), poussée sur
+`origin/main` (`537f66c`).
+
+## Entrée 23 — Phase 4 (SMTP) : configuration du SMTP natif alwaysdata
+**Date :** 19 août 2026
+
+Diagnostic : le `.env` de prod utilisait encore Ethereal (aucune livraison réelle).
+SMTP natif alwaysdata configuré (`smtp-kadakour.alwaysdata.net`, compte technique
+`kadakour@alwaysdata.net`). Test d'envoi non concluant mais expliqué : le code en
+prod était encore la version pré-certification (n'appelle pas
+`mailer.sendVerificationEmail`) — comportement normal en attendant la Phase 4
+(déploiement du code).
+
+## Entrée 24 — Phase 4 (code) : déploiement du backend evolution-v2
+**Date :** 21 août 2026
+
+Version Node figée sur 24.14.0. Découverte que le code `evolution-v2` était déjà
+présent à la racine du serveur (uploadé le 12/08, jamais activé). Réparation du
+`node_modules` corrompu (`express-rate-limit`/`debug`, `iconv-lite` réparés via
+`npm install --ignore-scripts` + recompilation isolée de `bcrypt` via
+`node-pre-gyp`, pour éviter l'OOM d'un `npm install` classique sur l'offre Free).
+`.env` de la racine resynchronisé avec les vraies valeurs de prod (DB, `APP_URL`,
+`FRONTEND_URL`). Commande du site basculée vers `node ~/server.js`.
+**Backend evolution-v2 actif en production**, vérifié (`/api/health`,
+`/api/services`, `/api/salons`). Ancien code (`~/backend/`) conservé comme filet de
+sécurité rollback.
+
+## Entrée 25 — Bug cwd et blocage Hotmail/Outlook identifié
+**Date :** 22 août 2026
+
+Bug trouvé : le répertoire de travail du site était resté sur `~/backend` malgré la
+bascule de commande — le serveur chargeait donc silencieusement l'ancien `.env`
+(valeurs Ethereal). Corrigé (répertoire de travail → `/home/kadakour/`). Un email de
+vérification part alors correctement via le SMTP alwaysdata, mais est
+systématiquement rejeté (`Bounced`) pour les adresses Hotmail/Outlook — diagnostic
+complet (blacklist, SPF, DMARC) éliminant toute cause technique côté projet ;
+confirmé comme un filtrage propre à l'infrastructure Microsoft envers les domaines
+mutualisés. Décision de proposer l'application à de vrais salons, ce qui rend ce
+blocage bloquant (Hotmail très répandu en France).
+
+## Entrée 26 — Migration SMTP vers Brevo, achat du nom de domaine
+**Date :** 22 août 2026
+
+Décision de migrer vers un service transactionnel tiers à meilleure réputation
+Microsoft plutôt que de rester sur le SMTP alwaysdata. Compte Brevo créé (300
+emails/jour gratuits). Blocage découvert : `kadakour.alwaysdata.net` est un
+sous-domaine dont la zone DNS n'est pas éditable — achat du nom de domaine propre
+**`salon-elegance.fr`** (1 an, revendeur Gandi via alwaysdata) pour lever ce
+blocage. Authentification du domaine complétée côté Brevo (TXT de vérification, 2
+CNAME DKIM, DMARC fusionné avec l'existant, SPF complété manuellement).
+
+## Entrée 27 — Bug `.env` corrompu et blocage réseau Brevo
+**Date :** 25-26 août 2026
+
+Un `sed` mal ciblé pendant la migration Brevo du 24/08 avait écrasé `DB_HOST` et
+`DB_USER` de prod avec des valeurs SMTP — corrigé (source du
+`PROTOCOL_CONNECTION_LOST` intermittent observé). Blocage réseau distinct découvert :
+connexions sortantes refusées (`ECONNREFUSED`) vers deux IPs Brevo précises,
+indépendamment du reste de Brevo/du port 587 (testé sain via `nc`). Ticket support
+alwaysdata ouvert.
+
+## Entrée 28 — Résolution complète : inscription et délivrabilité Hotmail
+**Date :** 27 août 2026
+
+Deux causes racines supplémentaires trouvées et corrigées dans le `.env` de prod,
+reliquats du même incident `sed` du 24/08 : `DB_PORT` valait le port SMTP (587) au
+lieu de 3306 ; `DB_PASSWORD` était un doublon de la clé API Brevo (mot de passe
+MySQL régénéré). Après ces correctifs, `register` fonctionne de bout en bout et
+**l'email de vérification est bien reçu côté Hotmail** — premier succès complet
+depuis le début de la migration Brevo. Le blocage réseau IP de l'Entrée 27 ne s'est
+plus reproduit depuis.
+
+## Entrée 29 — Sauvegardes automatiques et cron jobs (Phase 5)
+**Date :** 27-28 août 2026
+
+**Phase 5 terminée.** Script `scripts/backup-db.sh` créé (mysqldump + gzip + rotation
+14 jours, en complément des sauvegardes automatiques alwaysdata limitées à 3 jours
+glissants sur l'offre Free). Deux tâches cron configurées dans le panneau alwaysdata :
+rappels RDV horaires (`send-reminders.js`) et backup DB quotidien (03:00). Pages
+légales statiques créées (mentions légales, CGU, confidentialité), liées depuis le
+footer, committées (`564f976`) — contenu laissé avec des placeholders
+`[À COMPLÉTER]` (raison sociale, adresse) en l'absence de société/auto-entreprise.
+
+## Entrée 30 — Correction du bug de chemin cron et reprise de la Phase 6
+**Date :** 29 août 2026
+
+**Bug découvert et corrigé** : les deux scripts cron avaient été déployés sous
+`/home/kadakour/backend/scripts/` en prod (ancien dossier, filet de sécurité
+rollback) au lieu de `/home/kadakour/scripts/` (racine du code actif) — la tâche de
+rappels a échoué silencieusement toute la matinée. Fichiers déplacés, tâches
+cron mises à jour, retestées manuellement avec succès.
+
+**Phase 6 (vérifications post-déploiement) engagée** :
+- Volet infrastructure validé : HTTPS/certificat OK, en-têtes de sécurité Helmet
+  complets sur l'API (HSTS, `nosniff`, `SAMEORIGIN`…), CORS en liste blanche stricte
+  confirmé (origine non autorisée rejetée, origine légitime acceptée avec
+  `access-control-allow-origin` reflété).
+- Tentative de rattacher le nom de domaine `salon-elegance.fr` au site : **bloquée
+  par le forfait alwaysdata Free**, qui ne permet pas de domaine personnalisé
+  (message d'erreur explicite du panneau). Décision : mettre ce point de côté et
+  rester sur `kadakour.alwaysdata.net` pour l'instant, `salon-elegance.fr` conservé
+  en réserve (DNS déjà prêt pour Brevo).
+- **Bug de déploiement découvert** : le frontend statique en prod (site PHP distinct
+  du site Node, servant `frontend/`) était resté figé sur la version
+  pré-certification du 21 juin — la Phase 4 n'avait déployé/activé que le backend,
+  jamais le frontend `evolution-v2`. Corrigé le jour même : dossier `frontend/`
+  déployé en intégralité vers `/home/kadakour/www/` via FileZilla (`index.html`,
+  `css/`, `js/`, `pages/`, hors `node_modules/` égaré par erreur dans
+  `frontend/js/`).
+- **Test de bout en bout réussi en production** après déploiement : connexion
+  dashboard admin (menu multi-salons visible), puis parcours client complet
+  (renvoi de vérification e-mail via Brevo, connexion, réservation d'un
+  rendez-vous réel apparaissant correctement dans « Mes RDV »).
+
 ---
 
 ## Reste à faire
 
-Déploiement des évolutions post-soutenance sur alwaysdata (migrations 001→007,
-`FRONTEND_URL` + SMTP réel en remplacement d'Ethereal, vérifications post-déploiement).
+- Vérifier demain (30/08) qu'aucun nouvel échec cron n'est survenu depuis la
+  correction de chemin du 29/08.
+- Finaliser les 3 pages légales (email de contact, section cookies RGPD §8 —
+  générées mais pas encore réintégrées au dépôt local ni committées) puis les
+  redéployer en prod.
+- Terminer la Phase 6 (parcours fonctionnel manager/admin complet restant à
+  couvrir) et enchaîner sur la Phase 7 (mise à jour finale de cette documentation).
+- Nom de domaine personnalisé `salon-elegance.fr` : en attente d'un éventuel
+  passage à un forfait alwaysdata payant.
+- Nettoyage mineur non bloquant : trois fichiers vides à la racine du serveur avec
+  des identifiants Ethereal dans leur nom (créés par erreur le 21/08), `node_modules`
+  égaré dans `frontend/js/` du dépôt local.

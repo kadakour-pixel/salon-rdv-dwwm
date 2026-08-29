@@ -56,7 +56,7 @@ administrateur pilote l'ensemble du réseau.
 | Base de données | MariaDB via `mysql2` (pool, requêtes paramétrées) |
 | Authentification | JWT (JSON Web Tokens) + rôles |
 | Hashage des mots de passe | bcrypt |
-| E-mails | Nodemailer (Ethereal en dev) |
+| E-mails | Nodemailer — Ethereal en dev, Brevo (SMTP transactionnel) en production |
 | Sécurité HTTP | Helmet, CORS (liste blanche) |
 | Anti-abus | express-rate-limit |
 | Tests | Jest + Supertest (182 tests) |
@@ -186,7 +186,10 @@ npx jest --runInBand --forceExit
 
 ## 🔌 API REST
 
-Base URL : `http://localhost:3000/api` (dev) ou `https://kadakour.alwaysdata.net/api` (prod).
+Base URL : `http://localhost:3000/api` (dev) ou `https://kadakour.alwaysdata.net/api`
+(prod — un nom de domaine dédié, `salon-elegance.fr`, a été acheté mais n'est pas
+encore rattaché, le forfait alwaysdata Free ne permettant pas de domaine
+personnalisé).
 
 ### Authentification
 
@@ -286,7 +289,9 @@ Password : AdminDev123   ← à changer impérativement en production
 - Salons : suppression réservée aux salons vierges, archivage = défense en profondeur
 - Détection des conflits de créneaux côté serveur, scopée par coiffeur
 - Requêtes SQL systématiquement paramétrées (protection injection)
-- **Helmet** (en-têtes HTTP) + **CORS** en liste blanche d'origines
+- **Helmet** (en-têtes HTTP) + **CORS** en liste blanche d'origines — les deux
+  vérifiés directement en production (HSTS, `nosniff`, `SAMEORIGIN`, origine non
+  autorisée rejetée)
 
 ---
 
@@ -305,11 +310,35 @@ Password : AdminDev123   ← à changer impérativement en production
 
 ## 🚧 État du déploiement
 
-Le code de ce dépôt (branche `evolution-v2`) contient toutes les évolutions
-post-soutenance. **La production sur alwaysdata n'est pas encore à jour** : elle tourne
-encore sur la version pré-évolutions (4 tables, sans multi-salons, sans anti-abus). Le
-déploiement des évolutions est en cours (migrations, configuration SMTP/URL de
-production, vérifications post-déploiement).
+Le code de ce dépôt (branche `evolution-v2`, fusionnée dans `main`) est **déployé et
+actif en production** sur `https://kadakour.alwaysdata.net` — backend et frontend
+inclus, avec toutes les évolutions post-soutenance (multi-salons, anti-abus, avis
+clients, invitations manager, carte Leaflet).
+
+**Ce qui est en place en production :**
+- 8 tables, migrations 001 → 007 jouées.
+- SMTP réel via **Brevo** (délivrabilité Hotmail/Outlook confirmée — le SMTP natif
+  alwaysdata était filtré par Microsoft).
+- Sauvegardes automatiques quotidiennes de la base (script dédié en complément de la
+  rétention limitée de l'offre Free).
+- Deux tâches planifiées actives : rappels de rendez-vous par e-mail (horaire) et
+  sauvegarde de la base (quotidienne).
+- HTTPS, en-têtes de sécurité Helmet et CORS en liste blanche vérifiés directement en
+  production.
+- Parcours client complet (inscription, vérification d'e-mail, réservation,
+  annulation) et connexion au dashboard admin testés de bout en bout en conditions
+  réelles.
+
+**Points encore ouverts :**
+- Un nom de domaine dédié (`salon-elegance.fr`) a été acheté et configuré côté DNS,
+  mais n'est pas encore rattaché au site — le forfait alwaysdata Free ne permet pas
+  de domaine personnalisé. L'application reste donc accessible sur
+  `kadakour.alwaysdata.net`.
+- Les pages légales (mentions légales, CGU, politique de confidentialité) sont en
+  ligne mais contiennent encore des informations à compléter (raison sociale,
+  adresse) — le projet n'ayant pas de statut de société à ce jour.
+- Les coordonnées GPS du salon principal ne sont pas encore renseignées en
+  production (utilisées uniquement pour l'affichage sur la carte Leaflet).
 
 ---
 

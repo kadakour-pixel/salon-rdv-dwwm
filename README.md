@@ -188,8 +188,9 @@ npx jest --runInBand --forceExit
 
 Base URL : `http://localhost:3000/api` (dev) ou `https://kadakour.alwaysdata.net/api`
 (prod — un nom de domaine dédié, `salon-elegance.fr`, a été acheté mais n'est pas
-encore rattaché, le forfait alwaysdata Free ne permettant pas de domaine
-personnalisé).
+rattaché : le forfait alwaysdata Free ne permet pas de domaine personnalisé, y
+compris via une simple redirection HTTP ; décision assumée de rester sur ce forfait
+tant qu'aucun salon n'est réellement client).
 
 ### Authentification
 
@@ -283,7 +284,9 @@ Password : AdminDev123   ← à changer impérativement en production
 - Authentification **JWT** signés, contrôle de rôle (`client`, `manager`, `admin`)
 - Vérification d'e-mail obligatoire à l'inscription
 - **Rate-limiting** (`express-rate-limit`) sur les routes sensibles (login, register,
-  resend-verification, création de RDV)
+  resend-verification, création de RDV) — le mécanisme de désactivation en test
+  (`JEST_WORKER_ID`) a été audité et confirmé sûr par conception : cette variable
+  n'est jamais définie hors d'une exécution Jest
 - **Plafond de rendez-vous actifs** par client (5, tous salons confondus)
 - Prestations supprimées **désactivées logiquement** (`is_active = 0`)
 - Salons : suppression réservée aux salons vierges, archivage = défense en profondeur
@@ -313,27 +316,29 @@ Password : AdminDev123   ← à changer impérativement en production
 Le code de ce dépôt (branche `evolution-v2`, fusionnée dans `main`) est **déployé et
 actif en production** sur `https://kadakour.alwaysdata.net` — backend et frontend
 inclus, avec toutes les évolutions post-soutenance (multi-salons, anti-abus, avis
-clients, invitations manager, carte Leaflet).
+clients, invitations manager, carte Leaflet). **Les 8 phases du plan de déploiement
+sont terminées, à l'exception de la documentation finale (Phase 7, en cours) et de
+la Phase 8 (contenu jamais précisé, à considérer comme close).**
 
-**Ce qui est en place en production :**
+**Ce qui est en place en production, entièrement vérifié :**
 - 8 tables, migrations 001 → 007 jouées.
 - SMTP réel via **Brevo** (délivrabilité Hotmail/Outlook confirmée — le SMTP natif
   alwaysdata était filtré par Microsoft).
 - Sauvegardes automatiques quotidiennes de la base (script dédié en complément de la
-  rétention limitée de l'offre Free).
-- Deux tâches planifiées actives : rappels de rendez-vous par e-mail (horaire) et
-  sauvegarde de la base (quotidienne).
+  rétention limitée de l'offre Free) et deux tâches planifiées actives (rappels
+  horaires + backup quotidien), toutes deux retestées sans erreur.
 - HTTPS, en-têtes de sécurité Helmet et CORS en liste blanche vérifiés directement en
   production.
-- Parcours client complet (inscription, vérification d'e-mail, réservation,
-  annulation) et connexion au dashboard admin testés de bout en bout en conditions
-  réelles.
+- Parcours **client** complet (inscription, vérification d'e-mail, réservation,
+  annulation), dashboard **admin** et dashboard **manager** (accès correctement
+  scopé à son salon) testés de bout en bout en conditions réelles.
 
 **Points encore ouverts :**
 - Un nom de domaine dédié (`salon-elegance.fr`) a été acheté et configuré côté DNS,
-  mais n'est pas encore rattaché au site — le forfait alwaysdata Free ne permet pas
-  de domaine personnalisé. L'application reste donc accessible sur
-  `kadakour.alwaysdata.net`.
+  mais n'est pas rattaché au site — le forfait alwaysdata Free ne permet pas de
+  domaine personnalisé, quel que soit le type de site (application ou simple
+  redirection). Décision assumée de rester sur ce forfait tant qu'aucun salon n'est
+  réellement intéressé ; l'application reste accessible sur `kadakour.alwaysdata.net`.
 - Les pages légales (mentions légales, CGU, politique de confidentialité) sont en
   ligne mais contiennent encore des informations à compléter (raison sociale,
   adresse) — le projet n'ayant pas de statut de société à ce jour.

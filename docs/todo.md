@@ -1,17 +1,17 @@
 # Todo — Salon Élégance
 
-**Dernière mise à jour :** 29 août 2026
+**Dernière mise à jour :** 30 août 2026
 **État :** 182 tests automatisés verts · 36/36 user stories · titre DWWM obtenu
-(soutenance réussie le 29/07/2026) · projet poursuivi comme portfolio · **déploiement
-alwaysdata des évolutions post-soutenance terminé** (backend + frontend + SMTP réel +
-cron), objectif en cours : proposer l'application à de vrais salons
+(soutenance réussie le 29/07/2026) · projet poursuivi comme portfolio · **Phase 6
+(vérifications post-déploiement) terminée** · objectif en cours : proposer
+l'application à de vrais salons
 
 ---
 
 ## Priorité 1 — Déploiement alwaysdata (état détaillé)
 
-Plan en 8 phases. Détail des phases 1/2/7/8 reconstitué au fil des sessions ; les
-phases 0/3/4/5/6 sont couvertes.
+Plan en 8 phases. Détail des phases 1/2/8 reconstitué au fil des sessions ; les
+phases 0/3/4/5/6 sont couvertes, la Phase 7 en cours.
 
 - [x] **Phase 0 — Pré-vol** : état des lieux de la prod avant modification.
 - [x] **Phase 1 — Sauvegardes** : dump BDD initial (DBeaver), puis script
@@ -33,24 +33,24 @@ phases 0/3/4/5/6 sont couvertes.
 - [x] **Phase 5 — Cron jobs** : rappels RDV horaires + backup DB quotidien, actifs
   dans le panneau alwaysdata. Un bug de chemin de déploiement (corrigé le 29/08,
   voir journal de bord) avait fait échouer silencieusement les rappels une matinée.
-- [ ] **Phase 6 — Vérifications post-déploiement** :
+- [x] **Phase 6 — Vérifications post-déploiement** : **terminée le 30/08.**
   - [x] HTTPS/certificat SSL.
   - [x] En-têtes de sécurité Helmet (HSTS, `nosniff`, `SAMEORIGIN`…) sur l'API.
   - [x] CORS en liste blanche stricte.
   - [x] Parcours client complet (inscription → vérification email → connexion →
     réservation → annulation) validé de bout en bout en prod.
   - [x] Dashboard admin (connexion, menu multi-salons) validé en prod.
-  - [ ] Vérifier qu'aucun nouvel échec cron n'est survenu depuis la correction du
-    29/08 (à faire le 30/08).
-  - [ ] Parcours manager (accès scopé à son salon) pas encore spécifiquement testé
-    en prod.
-  - [ ] Confirmer qu'aucun mécanisme équivalent à `JEST_WORKER_ID` n'est actif en
-    prod (le rate-limiting est désactivé en test via cette variable — vérifier que
-    `NODE_ENV` réel sur alwaysdata n'offre pas d'échappatoire similaire).
+  - [x] Aucun nouvel échec cron depuis la correction du 29/08 (vérifié le 30/08 :
+    email + backup + rappels retestés manuellement, tout OK).
+  - [x] Parcours manager testé en prod : accès correctement scopé à son salon
+    (« Mon salon », pas d'onglet « Salons »), stats cohérentes.
+  - [x] Échappatoire `JEST_WORKER_ID` du rate-limiting auditée : sûre par
+    conception (variable injectée uniquement par Jest, jamais par une config
+    manuelle) — confirmé vide dans le shell prod.
 - [ ] **Phase 7 — Documentation** : mise à jour de `README.md`,
-  `docs/journal-de-bord.md`, `docs/todo.md` en cours (cette mise à jour). Reste à
-  actualiser le README des migrations (colonne prod) et à retirer la mention
-  "production pas à jour" une fois tout confirmé stable.
+  `docs/journal-de-bord.md`, `docs/todo.md` en cours (cette mise à jour, 30/08).
+  Reste à actualiser le README des migrations (colonne prod) et à retirer la
+  mention "production pas à jour" une fois tout confirmé stable.
 - [ ] **Phase 8** — contenu jamais précisé dans les sessions antérieures, à définir
   ou à considérer comme clôturée si aucun point restant ne s'y rattache.
 
@@ -59,10 +59,13 @@ phases 0/3/4/5/6 sont couvertes.
 ## Priorité 2 — Suite de l'objectif "proposer l'app à de vrais salons"
 
 ### [x] Nom de domaine propre acheté — `salon-elegance.fr`
-Configuré côté DNS pour Brevo (SPF/DKIM/DMARC). **Non rattaché à un site alwaysdata**
-pour l'instant : le forfait Free ne permet pas de domaine personnalisé (message
-d'erreur explicite du panneau, découvert le 29/08). L'application reste accessible
-sur `kadakour.alwaysdata.net` en attendant un éventuel changement de forfait.
+Configuré côté DNS pour Brevo (SPF/DKIM/DMARC). **Non rattaché à un site alwaysdata** :
+le forfait Free ne permet pas de domaine personnalisé, y compris via un site de type
+Redirection (testé et bloqué le 30/08, message d'erreur explicite du panneau — la
+restriction porte sur l'abonnement lui-même, pas sur le type de site). **Décision du
+30/08 : rester sur le forfait Free** tant qu'aucun salon n'est réellement intéressé ;
+passage à l'offre Plus (~5€ HT/mois) reste la seule option pour débloquer ce point,
+à activer le jour venu. L'application reste accessible sur `kadakour.alwaysdata.net`.
 
 ### [x] Délivrabilité Hotmail/Outlook résolue
 Migration SMTP alwaysdata → Brevo, plusieurs incidents de configuration `.env`
@@ -79,7 +82,7 @@ directeur de publication, durées de conservation précises RGPD §5) — pas de
 ni d'auto-entreprise à ce jour, projet perso/portfolio. Une version enrichie (email
 de contact + section cookies RGPD §8) a été générée dans une session antérieure mais
 **pas encore réintégrée dans le dépôt local ni committée** — à faire "en temps
-voulu".
+voulu" (repoussé volontairement, sur demande explicite).
 
 ### [ ] Question du support/maintenance pour un salon client réel
 Pas encore abordée.
@@ -101,6 +104,7 @@ Multi-marqueurs à l'étape salon, mono-marqueur au récapitulatif.
 
 ### [x] Anti-abus
 Rate-limiting (login/register/RDV) + limite de 5 rendez-vous actifs par client.
+Échappatoire `JEST_WORKER_ID` auditée et confirmée sûre (30/08).
 
 ### [x] Avis clients
 Dépôt, affichage public, note moyenne.
@@ -126,14 +130,15 @@ production).
 - [ ] Retrait des `DEFAULT 1` (migration 005) une fois le frontend historique
   définitivement abandonné.
 - [ ] Endpoints admin-only pour gérer les coiffeurs (`stylists`) directement.
-- [ ] `node_modules` présent dans l'historique Git (cosmétique) — **et un second
-  `node_modules` (dépendances backend) découvert par erreur dans `frontend/js/` en
-  local le 29/08, jamais déployé mais à nettoyer côté dépôt.**
+- [x] ~~`node_modules` égaré (dépendances backend) dans `frontend/js/` en local~~ —
+  supprimé le 30/08 (confirmé non suivi par Git avant suppression). Reste
+  cosmétique : `node_modules` toujours présent dans l'historique Git.
+- [x] ~~Trois fichiers vides à la racine du serveur de prod avec des identifiants
+  Ethereal dans leur nom~~ — supprimés le 30/08.
+- [x] ~~`.env` résiduel découvert dans `frontend/js/` en local~~ — inspecté (aucun
+  secret réel, `DB_PASSWORD`/`JWT_SECRET` vides) puis supprimé le 30/08.
 - [ ] `archived_by === 1` en dur dans un test (à généraliser).
 - [ ] README des migrations à tenir à jour (colonne prod).
-- [ ] Trois fichiers vides à la racine du serveur de prod, créés par erreur le
-  21/08, dont le nom contient des identifiants Ethereal (test, non sensibles) — à
-  supprimer.
 - [ ] Encodage du sujet des emails à vérifier côté destinataire final (mal encodé
   dans les logs alwaysdata à une époque — probable souci UTF-8 sur l'en-tête
   `subject`, jamais reconfirmé depuis la migration Brevo).
@@ -142,11 +147,26 @@ production).
 
 ## Priorité 5 — Évolutions futures
 
+Roadmap dégagée le 30/08 suite à une comparaison avec Planity Pro (leader du
+marché), par ordre de priorité — aucun de ces points n'est engagé à ce stade :
+
+- [ ] Rappels par **SMS** en complément de l'email (Brevo SMS ou Twilio) — gain le
+  plus direct identifié sur la réduction des no-shows ; coût à chiffrer, contrairement
+  à l'email actuellement gratuit.
+- [ ] **Acompte / paiement en ligne** à la réservation (Stripe) pour les prestations
+  longues/coûteuses.
+- [ ] **Visibilité publique** du salon : SEO (structured data schema.org
+  LocalBusiness) + fiche Google Business Profile pointant vers le lien de réservation.
+- [ ] **Export de données client** (CSV/JSON) — argument différenciant face à un SaaS
+  loué où l'historique reste hébergé chez le prestataire.
+- [ ] **Tableau de bord enrichi** : taux de no-show réel, prestation la plus
+  demandée, chiffre d'affaires estimé sur la période.
+- [ ] **Page de présentation / argumentaire pro** avant tout démarchage de salon
+  réel (gratuit à vie, propriété des données, sur-mesure évolutif).
 - [ ] Plage de dates pour congés (bloquer une période plutôt que jour par jour).
-- [ ] Paiement en ligne.
-- [ ] Notifications SMS (le rappel e-mail est déjà livré).
 - [ ] Application mobile native.
-- [ ] Passage à un forfait alwaysdata payant pour activer `salon-elegance.fr`.
+- [ ] Passage à un forfait alwaysdata payant pour activer `salon-elegance.fr` — en
+  attente d'un signal concret (salon réellement intéressé), voir Priorité 2.
 
 ---
 

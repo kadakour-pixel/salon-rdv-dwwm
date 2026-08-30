@@ -340,19 +340,48 @@ cron mises à jour, retestées manuellement avec succès.
   (renvoi de vérification e-mail via Brevo, connexion, réservation d'un
   rendez-vous réel apparaissant correctement dans « Mes RDV »).
 
+## Entrée 31 — Clôture de la Phase 6 : cron, parcours manager, rate-limiting, nettoyage
+**Date :** 30 août 2026
+
+**Phase 6 terminée.** Vérification post-fix confirmée : aucun email d'échec cron
+depuis la correction du 29/08, backup automatique du 30/08 03:00 présent, script de
+rappels retesté manuellement sans erreur en SSH.
+
+Parcours **manager** testé en production pour la première fois : accès correctement
+scopé au salon assigné (« Mon salon », pas d'onglet « Salons »), statistiques du
+dashboard cohérentes.
+
+Échappatoire `JEST_WORKER_ID` du rate-limiting auditée et jugée sûre par
+conception : cette variable n'est injectée que par Jest lui-même pendant `npm test`,
+jamais par une configuration manuelle — aucun risque de désactivation accidentelle
+en production.
+
+**Nettoyage effectué** : les trois fichiers vides contenant des identifiants
+Ethereal supprimés du serveur ; le `node_modules/` égaré dans `frontend/js/` (et un
+`.env` résiduel découvert au passage, sans secret réel) supprimés en local.
+
+**Nom de domaine personnalisé** : tentative de contournement gratuit testée
+(création d'un site de type Redirection vers `salon-elegance.fr`) — bloquée par le
+même message explicite du forfait Free, confirmant que la restriction porte sur
+l'abonnement et non sur le type de site. Décision : rester sur le forfait Free tant
+qu'il n'y a pas de salon réellement intéressé ; passage à l'offre Plus (~5€/mois)
+resterait la seule option le jour venu.
+
+**Comparaison avec Planity Pro (leader du marché)** menée pour cadrer les
+évolutions futures : pistes identifiées par ordre de priorité — rappels SMS (gain
+le plus direct sur les no-shows), acompte en ligne (Stripe), visibilité publique
+(SEO + Google Business Profile), export de données client, tableau de bord enrichi,
+argumentaire de présentation pro. Non engagées à ce stade, consignées comme
+roadmap.
+
 ---
 
 ## Reste à faire
 
-- Vérifier demain (30/08) qu'aucun nouvel échec cron n'est survenu depuis la
-  correction de chemin du 29/08.
 - Finaliser les 3 pages légales (email de contact, section cookies RGPD §8 —
   générées mais pas encore réintégrées au dépôt local ni committées) puis les
   redéployer en prod.
-- Terminer la Phase 6 (parcours fonctionnel manager/admin complet restant à
-  couvrir) et enchaîner sur la Phase 7 (mise à jour finale de cette documentation).
-- Nom de domaine personnalisé `salon-elegance.fr` : en attente d'un éventuel
-  passage à un forfait alwaysdata payant.
-- Nettoyage mineur non bloquant : trois fichiers vides à la racine du serveur avec
-  des identifiants Ethereal dans leur nom (créés par erreur le 21/08), `node_modules`
-  égaré dans `frontend/js/` du dépôt local.
+- Enchaîner sur la Phase 7 (mise à jour finale de cette documentation) — en
+  cours avec cette entrée.
+- Roadmap fonctionnelle (non engagée) : rappels SMS, acompte en ligne, visibilité
+  SEO/Google Business Profile, export de données client, tableau de bord enrichi.

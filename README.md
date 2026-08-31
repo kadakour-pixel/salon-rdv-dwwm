@@ -317,21 +317,25 @@ Le code de ce dépôt (branche `evolution-v2`, fusionnée dans `main`) est **dé
 actif en production** sur `https://kadakour.alwaysdata.net` — backend et frontend
 inclus, avec toutes les évolutions post-soutenance (multi-salons, anti-abus, avis
 clients, invitations manager, carte Leaflet). **Les 8 phases du plan de déploiement
-sont terminées, à l'exception de la documentation finale (Phase 7, en cours) et de
-la Phase 8 (contenu jamais précisé, à considérer comme close).**
+sont terminées ; seule la documentation finale (Phase 7) reste à finaliser (README des
+migrations à actualiser), la Phase 8 n'ayant jamais eu de contenu défini et étant
+considérée comme close.**
 
 **Ce qui est en place en production, entièrement vérifié :**
 - 8 tables, migrations 001 → 007 jouées.
 - SMTP réel via **Brevo** (délivrabilité Hotmail/Outlook confirmée — le SMTP natif
   alwaysdata était filtré par Microsoft).
 - Sauvegardes automatiques quotidiennes de la base (script dédié en complément de la
-  rétention limitée de l'offre Free) et deux tâches planifiées actives (rappels
-  horaires + backup quotidien), toutes deux retestées sans erreur.
+  rétention limitée de l'offre Free), un test de restauration end-to-end effectué sur
+  une base dédiée, et deux tâches planifiées actives (rappels horaires + backup
+  quotidien), toutes deux retestées sans erreur.
 - HTTPS, en-têtes de sécurité Helmet et CORS en liste blanche vérifiés directement en
   production.
 - Parcours **client** complet (inscription, vérification d'e-mail, réservation,
   annulation), dashboard **admin** et dashboard **manager** (accès correctement
   scopé à son salon) testés de bout en bout en conditions réelles.
+- Coordonnées GPS du salon principal (id=1, "Salon Témoin") renseignées et vérifiées
+  visuellement sur la carte Leaflet en production.
 
 **Points encore ouverts :**
 - Un nom de domaine dédié (`salon-elegance.fr`) a été acheté et configuré côté DNS,
@@ -342,8 +346,6 @@ la Phase 8 (contenu jamais précisé, à considérer comme close).**
 - Les pages légales (mentions légales, CGU, politique de confidentialité) sont en
   ligne mais contiennent encore des informations à compléter (raison sociale,
   adresse) — le projet n'ayant pas de statut de société à ce jour.
-- Les coordonnées GPS du salon principal ne sont pas encore renseignées en
-  production (utilisées uniquement pour l'affichage sur la carte Leaflet).
 
 ---
 

@@ -16,13 +16,17 @@ Ordre d'application : `001` → `002` → `003` → `004` → `005` → `006` �
 
 | # | Appliquée en dev | Appliquée en prod |
 |---|---|---|
-| 001 | Oui | Non |
-| 002 | Oui | Non |
-| 003 | Oui | Non |
-| 004 | Oui | Non |
-| 005 | Oui (29/07/2026) | Non |
-| 006 | Oui (02/08/2026) | Non |
-| 007 | Oui (03/08/2026) | Non |
+| 001 | Oui | Oui |
+| 002 | Oui | Oui |
+| 003 | Oui | Oui |
+| 004 | Oui | Oui |
+| 005 | Oui (29/07/2026) | Oui |
+| 006 | Oui (02/08/2026) | Oui |
+| 007 | Oui (03/08/2026) | Oui |
+
+Colonne prod vérifiée en base le 31/08/2026 via `information_schema` (présence des
+colonnes/tables marqueurs de chaque migration sur `kadakour_salon_rdv`) — les 7
+migrations sont bien appliquées en production.
 
 ## Note
 

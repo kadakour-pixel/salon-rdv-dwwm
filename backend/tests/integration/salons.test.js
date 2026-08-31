@@ -148,8 +148,12 @@ describe('GET /api/salons/:id/stylists', () => {
 // un token signé avec role: 'admin' suffit donc pour les routes admin (comme
 // dans les autres suites). Ces routes n'utilisent pas resolveSalonScope, donc
 // un token manager/client signé à la main suffit aussi pour vérifier le 403.
+// ADMIN_USER_ID centralise l'id porté par adminToken : utilisé aussi bien
+// pour signer le token que pour vérifier archived_by plus bas, afin d'éviter
+// une valeur en dur dupliquée à deux endroits (source d'oubli si l'id change).
+const ADMIN_USER_ID = 1;
 const adminToken = jwt.sign(
-  { id: 1, email: 'admin-jest@salon.fr', role: 'admin' },
+  { id: ADMIN_USER_ID, email: 'admin-jest@salon.fr', role: 'admin' },
   process.env.JWT_SECRET,
   { expiresIn: '1h' }
 );
@@ -802,7 +806,7 @@ describe('POST /api/salons/:id/archive', () => {
       [salonId]
     );
     expect(row.archived_at).not.toBeNull();
-    expect(row.archived_by).toBe(1); // id porté par adminToken
+    expect(row.archived_by).toBe(ADMIN_USER_ID); // id porté par adminToken
     expect(row.is_active).toBe(0);
   });
 
